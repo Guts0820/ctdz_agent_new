@@ -3,6 +3,12 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+def convert_difficulty(value) -> str:
+    if isinstance(value, str):
+        return value
+    difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
+    return difficulty_map.get(value, "medium")
+
 app = FastAPI(title="Knowledge Service", version="1.0.0")
 
 KG_SERVICE_URL = "http://localhost:8007"
@@ -57,7 +63,7 @@ def retrieve_knowledge(request: KnowledgeRetrieveRequest):
     
     return KnowledgeRetrieveResponse(
         knowledge_explanation=knowledge.get("content", ""),
-        difficulty=knowledge.get("difficulty", "medium"),
+        difficulty=convert_difficulty(knowledge.get("difficulty", "medium")),
         standard_solution="",
         scope_validation=scope_validation,
         prerequisite="",

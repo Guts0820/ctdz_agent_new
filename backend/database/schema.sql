@@ -177,3 +177,93 @@ CREATE TABLE frequency_limit (
     FOREIGN KEY (student_id) REFERENCES students(student_id),
     FOREIGN KEY (knowledge_id) REFERENCES knowledge(knowledge_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='频次限制表';
+
+-- 作业批次表
+CREATE TABLE homework_batch (
+    batch_id VARCHAR(32) PRIMARY KEY COMMENT '批次id',
+    class_id VARCHAR(32) COMMENT '班级id',
+    teacher_id VARCHAR(32) COMMENT '教师id',
+    batch_date DATE COMMENT '批次日期',
+    release_status VARCHAR(20) DEFAULT 'locked' COMMENT '发布状态（locked/released）',
+    release_time DATETIME COMMENT '发布时间',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建日期'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='作业批次表';
+
+-- 批次题目关联表
+CREATE TABLE homework_batch_question (
+    batch_id VARCHAR(32) COMMENT '批次id',
+    question_id VARCHAR(32) COMMENT '题目id',
+    PRIMARY KEY (batch_id, question_id),
+    FOREIGN KEY (batch_id) REFERENCES homework_batch(batch_id),
+    FOREIGN KEY (question_id) REFERENCES question(question_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='批次题目关联表';
+
+-- 题目发布覆盖表
+CREATE TABLE question_release_override (
+    batch_id VARCHAR(32) COMMENT '批次id',
+    question_id VARCHAR(32) COMMENT '题目id',
+    released_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+    PRIMARY KEY (batch_id, question_id),
+    FOREIGN KEY (batch_id) REFERENCES homework_batch(batch_id),
+    FOREIGN KEY (question_id) REFERENCES question(question_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目发布覆盖表';
+
+-- ===== review2_ 系列：新复习体系持久化表（与旧 review_plan/push_record 体系隔离）=====
+
+CREATE TABLE review2_plan (
+    id VARCHAR(64) PRIMARY KEY COMMENT '计划id',
+    student_id VARCHAR(32) COMMENT '学生id',
+    business_date DATE COMMENT '业务日期',
+    mode VARCHAR(20) COMMENT '计划模式',
+    question_count INT COMMENT '题目数量',
+    time_limit_minutes INT COMMENT '时间限制(分钟)',
+    priority_run_id VARCHAR(64) COMMENT '优先级快照id',
+    status VARCHAR(20) COMMENT '计划状态',
+    planning_config_version VARCHAR(50) COMMENT '规划配置版本',
+    created_at DATETIME COMMENT '创建时间',
+    frozen_at DATETIME COMMENT '冻结时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新复习计划表';
+
+CREATE TABLE review2_plan_item (
+    plan_id VARCHAR(64) COMMENT '计划id',
+    position INT COMMENT '题目顺序位置',
+    question_id VARCHAR(32) COMMENT '题目id',
+    status VARCHAR(20) COMMENT '题目状态',
+    knowledge_point_ids TEXT COMMENT '知识点id列表(JSON)',
+    planning_score TEXT COMMENT '规划评分明细(JSON)',
+    PRIMARY KEY (plan_id, position),
+    FOREIGN KEY (plan_id) REFERENCES review2_plan(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新复习计划题目项表';
+
+CREATE TABLE review2_session (
+    id VARCHAR(64) PRIMARY KEY COMMENT '会话id',
+    plan_id VARCHAR(64) COMMENT '计划id',
+    student_id VARCHAR(32) COMMENT '学生id',
+    status VARCHAR(20) COMMENT '会话状态',
+    current_position INT COMMENT '当前位置',
+    elapsed_seconds INT COMMENT '已用时(秒)',
+    started_at DATETIME COMMENT '开始时间',
+    resumed_at DATETIME COMMENT '恢复时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新复习会话表';
+
+CREATE TABLE review2_attempt (
+    id VARCHAR(64) PRIMARY KEY COMMENT '答题记录id',
+    session_id VARCHAR(64) COMMENT '会话id',
+    question_id VARCHAR(32) COMMENT '题目id',
+    position INT COMMENT '题目位置',
+    selected_option INT COMMENT '选择的选项索引',
+    student_answer TEXT COMMENT '学生答案(开放题)',
+    is_correct INT COMMENT '是否正确(0/1)',
+    analysis_status VARCHAR(20) COMMENT '分析状态',
+    submitted_at DATETIME COMMENT '提交时间',
+    correction_count INT DEFAULT 0 COMMENT '订正次数',
+    correction_is_correct INT COMMENT '订正是否正确(0/1)',
+    correction_selected_option INT COMMENT '订正选项索引',
+    correction_answer TEXT COMMENT '订正答案(开放题)',
+    correction_at DATETIME COMMENT '订正时间',
+    policy_version VARCHAR(50) COMMENT '策略版本',
+    error_tags TEXT COMMENT '错因标签(JSON)',
+    judge_method VARCHAR(20) DEFAULT 'fallback' COMMENT '判题方式(ai/fallback)',
+    correction_error_tags TEXT COMMENT '订正错因标签(JSON)',
+    correction_judge_method VARCHAR(20) COMMENT '订正判题方式(ai/fallback)'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='新复习答题记录表';

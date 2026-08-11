@@ -12,7 +12,7 @@ D:\简历\实习\Agent开发\ctdz_Agent\kg_service\main.py:44: DeprecationWarning:
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("shutdown")
-INFO:     Started server process [87048]
+INFO:     Started server process [71776]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8007 (Press CTRL+C to quit)

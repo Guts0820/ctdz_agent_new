@@ -25,12 +25,14 @@ def start_service(name, script_path, port, log_dir="backend/logs"):
 def main():
     services = [
         ("Knowledge Graph Service", "kg_service/main.py", 8007),
+        ("OCR Service", "handwriting_ocr_service/app/main.py", 8089),
         ("Analysis Service", "backend/services/analysis_service.py", 8081),
         ("Error Analysis Agent", "backend/services/error_analysis_agent.py", 8082),
         ("Knowledge Service", "backend/services/knowledge_service.py", 8083),
         ("Teaching Service", "backend/services/teaching_service.py", 8084),
         ("State Service", "backend/services/state_service.py", 8085),
         ("Review Scheduler", "backend/services/review_scheduler.py", 8086),
+        ("Review Service", "backend/services/review_service.py", 8087),
         ("API Gateway", "backend/api_gateway.py", 8000)
     ]
     
@@ -46,14 +48,16 @@ def main():
         
         print("\nAll services started!")
         print("=" * 60)
-        print("API Gateway: http://localhost:8000")
-        print("Analysis Service: http://localhost:8081")
-        print("Error Analysis Agent: http://localhost:8082")
-        print("Knowledge Service: http://localhost:8083")
-        print("Teaching Service: http://localhost:8084")
-        print("State Service: http://localhost:8085")
-        print("Review Scheduler: http://localhost:8086")
-        print("Knowledge Graph Service: http://localhost:8007")
+        print("API Gateway:              http://localhost:8000")
+        print("Analysis Service:         http://localhost:8081")
+        print("Error Analysis Agent:     http://localhost:8082")
+        print("Knowledge Service:        http://localhost:8083")
+        print("Teaching Service:         http://localhost:8084")
+        print("State Service:            http://localhost:8085")
+        print("Review Scheduler:         http://localhost:8086")
+        print("Review Service:           http://localhost:8087")
+        print("OCR Service:              http://localhost:8089")
+        print("Knowledge Graph Service:  http://localhost:8007")
         print("=" * 60)
         print(f"\n各服务日志保存在: backend/logs/ 目录下，如需调试请查看对应文件")
         print("\nPress Ctrl+C to stop all services...")

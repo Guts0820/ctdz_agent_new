@@ -1,12 +1,19 @@
 import json
+import re
+import sys
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import sqlite3
+import requests
+sys.path.insert(0, 'backend/services')
 from id_utils import generate_id
+from llm_client import call_llm
 
 app = FastAPI(title="Teaching Service", version="1.0.0")
+
+KG_SERVICE_URL = "http://127.0.0.1:8007"
 
 DATABASE = "backend/database/example_db.db"
 
@@ -15,6 +22,12 @@ class ErrorTag(BaseModel):
     level1: str
     level2: str
     level3: str
+
+def convert_difficulty(value) -> str:
+    if isinstance(value, str):
+        return value
+    difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
+    return difficulty_map.get(value, "medium")
 
 class PracticeQuestion(BaseModel):
     question_id: str
@@ -26,6 +39,7 @@ class PracticeQuestion(BaseModel):
 class TeachingGenerateRequest(BaseModel):
     error_tags: List[ErrorTag]
     knowledge_scope: str
+    knowledge_id: Optional[str] = None
     master_level: float
     original_question: str
     student_write: str
@@ -33,7 +47,9 @@ class TeachingGenerateRequest(BaseModel):
     grade: Optional[str] = "三年级"
 
 class TeachingGenerateResponse(BaseModel):
-    explanation: str
+    explanation: str  # 兼容旧调用方，内容 = guided_explanation + final_answer_explanation
+    guided_explanation: str  # 引导性讲解（不包含最终答案数字，学生随时可见）
+    final_answer_explanation: str  # 完整答案讲解（需要老师放行后才可见）
     hints: List[str]
     practice_list: List[PracticeQuestion]
     reasoning_content: str
@@ -117,36 +133,154 @@ def get_teaching_template(knowledge_scope: str) -> dict:
     else:
         return TEACHING_TEMPLATES["default"]
 
+def fetch_practice_questions(knowledge_id: str, count: int = 2) -> List[Dict]:
+    if not knowledge_id:
+        return []
+    try:
+        response = requests.post(
+            f"{KG_SERVICE_URL}/api/recommend",
+            json={"knowledge_ids": [knowledge_id], "count": count},
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get("recommended_questions", [])
+    except requests.exceptions.RequestException as e:
+        print(f"获取候选练习题失败: {e}")
+        return []
+
+def generate_teaching_with_llm(request: TeachingGenerateRequest, teaching_mode: str) -> Tuple[str, str, List[str], str]:
+    error_tags_str = json.dumps([tag.dict() for tag in request.error_tags], ensure_ascii=False, indent=2)
+
+    if teaching_mode == "BASIC":
+        mode_desc = "基础模式：学生对该知识点掌握较弱，讲解要通俗易懂，用简单的语言和形象的例子"
+    elif teaching_mode == "STANDARD":
+        mode_desc = "标准模式：学生对该知识点有一定基础，讲解注重方法步骤和关键点"
+    else:
+        mode_desc = "进阶模式：学生已基本掌握，讲解以拓展和巩固为主"
+
+    system_prompt = f"""你是一位经验丰富的小学数学老师，擅长根据学生的错题情况进行个性化讲解。
+
+## 教学模式
+{mode_desc}
+
+## 知识点
+{request.knowledge_scope}
+
+## 错因分析
+{error_tags_str}
+
+## 讲解要求（重要：必须拆分成两部分）
+1. guided_explanation：引导性讲解，帮助学生理解错误原因和正确方法，但**不要出现最终答案数字**。这是学生随时可见的内容。
+2. final_answer_explanation：完整答案讲解，包含正确的计算过程和最终答案数字。这需要老师放行后学生才能看到。
+3. hints：2-3条引导性提示，不要直接给答案，要引导学生思考
+4. reasoning_content：教学推理过程，说明你是如何根据错因和掌握度来生成讲解内容的
+
+## 输出格式
+请严格按照以下JSON格式输出，不要输出任何多余内容：
+{{
+    "guided_explanation": "引导性讲解（不含最终答案）",
+    "final_answer_explanation": "完整答案讲解（含最终答案）",
+    "hints": ["提示1", "提示2", "提示3"],
+    "reasoning_content": "教学推理过程"
+}}
+
+## 示例
+题目：小明有25颗糖果，小红有38颗糖果，他们一共有多少颗糖果？
+学生作答：25+38=53
+错因：计算-进位加法中十位漏加进位1
+掌握度：0.3（基础模式）
+
+输出：
+{{
+    "guided_explanation": "这道题考查的是两位数加两位数的进位加法。计算时要注意：相同数位对齐，从个位加起，个位相加满十要向十位进1。比如这道题，个位相加等于13，写3进1；十位上2+3还要加上进位的1。你在十位计算时忘记加上进位的1了哦。",
+    "final_answer_explanation": "正确答案是63。计算过程：个位5+8=13，写3进1；十位2+3+1=6，所以答案是63。",
+    "hints": ["个位5+8等于多少？", "个位满十了吗？满十要向哪一位进1？", "十位上的2+3还要再加什么？"],
+    "reasoning_content": "学生在十位计算时漏加了进位1，说明对进位加法的算理理解不够牢固，采用基础模式，用具体的例子一步步讲解进位的过程。"
+}}"""
+
+    user_prompt = f"""请为以下学生生成个性化教学内容：
+
+题目：{request.original_question}
+学生作答：{request.student_write}
+知识点：{request.knowledge_scope}
+教学模式：{teaching_mode}
+掌握度：{request.master_level}
+年级：{request.grade}
+
+请按照要求的JSON格式输出教学内容。"""
+
+    llm_response = call_llm(system_prompt, user_prompt)
+
+    llm_response = llm_response.strip()
+    if llm_response.startswith("```json"):
+        llm_response = llm_response[7:]
+    if llm_response.startswith("```"):
+        llm_response = llm_response[3:]
+    if llm_response.endswith("```"):
+        llm_response = llm_response[:-3]
+
+    try:
+        parsed = json.loads(llm_response)
+    except json.JSONDecodeError:
+        raise ValueError("LLM返回格式错误，无法解析JSON")
+
+    guided_explanation = parsed.get("guided_explanation", "")
+    final_answer_explanation = parsed.get("final_answer_explanation", "")
+    hints = parsed.get("hints", [])
+    reasoning_content = parsed.get("reasoning_content", "")
+
+    if not guided_explanation or not final_answer_explanation or not hints:
+        raise ValueError("LLM返回内容不完整")
+
+    return guided_explanation, final_answer_explanation, hints, reasoning_content
+
 @app.post("/internal/api/v1/teaching/generate", response_model=TeachingGenerateResponse)
 def generate_teaching(request: TeachingGenerateRequest):
-    template = get_teaching_template(request.knowledge_scope)
-    
     if request.master_level < 0.4:
         teaching_mode = "BASIC"
-        explanation = template["basic_explain"]
-        hints = template["basic_hints"]
-        practice_data = template["basic_practice"]
     elif 0.4 <= request.master_level <= 0.8:
         teaching_mode = "STANDARD"
-        explanation = template["standard_explain"]
-        hints = template["standard_hints"]
-        practice_data = template["standard_practice"]
     else:
         teaching_mode = "ADVANCED"
-        explanation = template["advanced_explain"]
-        hints = template["advanced_hints"]
-        practice_data = []
-    
-    practice_list = [
-        PracticeQuestion(
-            question_id=generate_id("Q"),
-            question_description=p["question"],
-            difficulty=request.difficulty,
-            answer=p["answer"],
-            solution=p["solution"]
-        ) for p in practice_data
-    ]
-    
+
+    template = get_teaching_template(request.knowledge_scope)
+
+    try:
+        guided_explanation, final_answer_explanation, hints, reasoning_content = generate_teaching_with_llm(request, teaching_mode)
+    except Exception as e:
+        print(f"LLM生成教学内容失败，降级为模板匹配。错误详情: {e}")
+        if teaching_mode == "BASIC":
+            template_explain = template["basic_explain"]
+            hints = template["basic_hints"]
+        elif teaching_mode == "STANDARD":
+            template_explain = template["standard_explain"]
+            hints = template["standard_hints"]
+        else:
+            template_explain = template["advanced_explain"]
+            hints = template["advanced_hints"]
+
+        # 模板内容作为完整讲解，拆分成两部分
+        # 引导部分：去掉最终答案数字（简单处理：截取前半部分）
+        guided_explanation = template_explain
+        final_answer_explanation = f"（完整答案讲解）{template_explain}"
+        reasoning_content = f"基于知识点'{request.knowledge_scope}'和掌握度{request.master_level:.2f}，生成{teaching_mode}模式的教学内容。错因：{[tag.level3 for tag in request.error_tags]}"
+
+    # 拼接两部分作为 explanation（兼容旧调用方）
+    explanation = f"{guided_explanation}\n\n{final_answer_explanation}"
+
+    practice_list = []
+    if teaching_mode != "ADVANCED" and request.knowledge_id:
+        practice_questions = fetch_practice_questions(request.knowledge_id, count=2)
+        for q in practice_questions:
+            practice_list.append(PracticeQuestion(
+                question_id=q.get("id", generate_id("Q")),
+                question_description=q.get("text", q.get("question", "")),
+                difficulty=convert_difficulty(q.get("difficulty", request.difficulty)),
+                answer=q.get("answer", ""),
+                solution=""
+            ))
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -160,17 +294,19 @@ def generate_teaching(request: TeachingGenerateRequest):
             explanation,
             json.dumps(hints),
             json.dumps([p.dict() for p in practice_list]),
-            f"根据掌握度{request.master_level:.2f}，选择{teaching_mode}教学模式",
+            reasoning_content,
             request.master_level,
             datetime.now().isoformat()
         ))
         conn.commit()
-    
+
     return TeachingGenerateResponse(
         explanation=explanation,
+        guided_explanation=guided_explanation,
+        final_answer_explanation=final_answer_explanation,
         hints=hints,
         practice_list=practice_list,
-        reasoning_content=f"基于知识点'{request.knowledge_scope}'和掌握度{request.master_level:.2f}，生成{teaching_mode}模式的教学内容。错因：{[tag.level3 for tag in request.error_tags]}",
+        reasoning_content=reasoning_content,
         teaching_mode=teaching_mode
     )
 

@@ -115,6 +115,35 @@ def fetch_knowledge_from_graph(knowledge_id: str) -> dict:
     except requests.exceptions.RequestException:
         return None
 
+def fetch_question_detail(question_id: str) -> dict:
+    try:
+        url = f"{KG_SERVICE_URL}/api/questions/{question_id}"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT q.question_id, q.question_description, q.standard_solve_steps,
+                       q.answer, q.difficulty, q.grade, qk.knowledge_id
+                FROM question q
+                LEFT JOIN question_knowledge_mapping qk ON q.question_id = qk.question_id
+                WHERE q.question_id = ?
+            ''', (question_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row["question_id"],
+                    "text": row["question_description"] or "",
+                    "answer_steps": row["standard_solve_steps"] or "",
+                    "answer": row["answer"] or "",
+                    "difficulty": row["difficulty"] or "medium",
+                    "grade": row["grade"] or "三年级",
+                    "knowledge_id": row["knowledge_id"] or ""
+                }
+        raise HTTPException(status_code=404, detail=f"题目 {question_id} 不存在")
+
 TEACHING_TEMPLATES = {
     "K035": {
         "basic": {"explain": "我们来学习两位数加两位数的进位加法。当两个数相加时，个位上的数字加起来如果等于或超过10，就要向十位进1。比如25+38，个位5+8=13，我们在个位写3，然后向十位进1，十位上2+3再加上进位的1等于6，所以结果是63。", "hints": ["先算个位，5+8等于多少？", "个位满十了吗？满十要怎么办？", "十位上的2+3还要加什么？"], "practice": [{"q": "18+25=？", "a": "43"}, {"q": "36+17=？", "a": "53"}]},
@@ -139,6 +168,12 @@ class SubmitRequest(BaseModel):
 class SubmitResponse(BaseModel):
     status: str
     data: dict
+
+class ExternalErrorAnalyzeRequest(BaseModel):
+    student_id: int
+    question_id: str
+    student_answer: str
+    correct_answer: str
 
 @app.post("/api/v1/submit", response_model=SubmitResponse)
 def submit_homework(request: SubmitRequest):
@@ -486,6 +521,54 @@ def analyze_error(analysis_result: dict) -> dict:
         "total_confidence": total_confidence
     }
 
+def analyze_error_light(student_id: str, original_question: str, standard_solve_steps: str,
+                        correct_answer: str, student_write: str, knowledge_id: str) -> dict:
+    if not student_write or student_write.strip() == "":
+        return {"error_tags": [], "knowledge_id": knowledge_id, "knowledge_scope": "",
+                "reasoning_content": "学生未提供有效作答内容，无法判断具体错因。", "total_confidence": 0.2}
+    
+    error_tags = []
+    
+    try:
+        s_val = float(student_write)
+        c_val = float(correct_answer)
+        diff = abs(c_val - s_val)
+        
+        if diff == 1 and c_val > s_val:
+            error_tags.append({"error_id": "C-001", **ERROR_TAG_BANK["C-001"], "confidence": 0.6})
+        elif diff == 1 and s_val > c_val:
+            error_tags.append({"error_id": "C-002", **ERROR_TAG_BANK["C-002"], "confidence": 0.6})
+        elif diff == 9:
+            error_tags.append({"error_id": "C-001", **ERROR_TAG_BANK["C-001"], "confidence": 0.5})
+        elif diff == 10:
+            error_tags.append({"error_id": "C-002", **ERROR_TAG_BANK["C-002"], "confidence": 0.5})
+        elif diff > 0 and diff < 5:
+            error_tags.append({"error_id": "M-001", **ERROR_TAG_BANK["M-001"], "confidence": 0.4})
+        elif diff > 0:
+            error_tags.append({"error_id": "R-001", **ERROR_TAG_BANK["R-001"], "confidence": 0.35})
+        else:
+            error_tags.append({"error_id": "M-001", **ERROR_TAG_BANK["M-001"], "confidence": 0.3})
+    except (ValueError, TypeError):
+        if student_write != correct_answer:
+            error_tags.append({"error_id": "R-001", **ERROR_TAG_BANK["R-001"], "confidence": 0.35})
+    
+    total_confidence = min(sum(t["confidence"] for t in error_tags) / len(error_tags), 0.6) if error_tags else 0.0
+    
+    knowledge_data = fetch_knowledge_from_graph(knowledge_id)
+    knowledge_scope = knowledge_data.get("title", "") if knowledge_data else ""
+    
+    reasoning = f"学生答案'{student_write}'与正确答案'{correct_answer}'存在差异"
+    if error_tags:
+        reasoning += f"，可能原因：{', '.join([t['level3'] for t in error_tags])}。由于仅有最终答案，置信度较低。"
+    
+    return {
+        "error_tags": error_tags[:3],
+        "knowledge_id": knowledge_id,
+        "knowledge_scope": knowledge_scope,
+        "reasoning_content": reasoning,
+        "total_confidence": total_confidence
+    }
+
 def retrieve_knowledge(knowledge_id: str) -> dict:
     knowledge = fetch_knowledge_from_graph(knowledge_id)
     if not knowledge:
@@ -638,6 +721,63 @@ def get_student_mastery(student_id: str):
         rows = [dict(row) for row in cursor.fetchall()]
     
     return {"status": "success", "data": rows}
+
+@app.post("/api/error/analyze")
+def external_error_analyze(request: ExternalErrorAnalyzeRequest):
+    try:
+        question_detail = fetch_question_detail(request.question_id)
+    except HTTPException as e:
+        return {
+            "error": "question_not_found",
+            "message": str(e.detail),
+            "question_id": request.question_id
+        }
+    except Exception as e:
+        return {
+            "error": "kg_service_unavailable",
+            "message": f"知识图谱服务暂时不可用: {str(e)}",
+            "fallback": "请稍后重试或联系管理员"
+        }
+    
+    try:
+        result = analyze_error_light(
+            student_id=f"U-{request.student_id}",
+            original_question=question_detail.get("text", ""),
+            standard_solve_steps=question_detail.get("answer_steps", ""),
+            correct_answer=request.correct_answer,
+            student_write=request.student_answer,
+            knowledge_id=question_detail.get("knowledge_id", "")
+        )
+    except Exception as e:
+        return {
+            "error": "analysis_failed",
+            "message": f"错因分析失败: {str(e)}",
+            "question_id": request.question_id
+        }
+    
+    error_tags = result.get("error_tags", [])
+    primary_tag = error_tags[0] if error_tags else {}
+    
+    return {
+        "error_type": primary_tag.get("error_id", "unknown"),
+        "error_type_label": primary_tag.get("level3", "未知"),
+        "error_detail": result.get("reasoning_content", ""),
+        "related_knowledge": [result.get("knowledge_scope", "")] if result.get("knowledge_scope") else [],
+        "confidence": result.get("total_confidence", 0.0),
+        "all_error_tags": [
+            {
+                "error_id": t.get("error_id"),
+                "level1": t.get("level1"),
+                "level2": t.get("level2"),
+                "level3": t.get("level3"),
+                "confidence": t.get("confidence")
+            }
+            for t in error_tags
+        ],
+        "knowledge_id": result.get("knowledge_id", ""),
+        "source": "light_analysis",
+        "note": "本接口为轻量分析模式，仅基于最终答案推断，置信度相对保守"
+    }
 
 @app.get("/health")
 def health_check():

@@ -170,6 +170,96 @@ CREATE TABLE IF NOT EXISTS frequency_limit (
     FOREIGN KEY (student_id) REFERENCES students(student_id),
     FOREIGN KEY (knowledge_id) REFERENCES knowledge(knowledge_id)
 );
+
+-- 作业批次表
+CREATE TABLE IF NOT EXISTS homework_batch (
+    batch_id VARCHAR(32) PRIMARY KEY,
+    class_id VARCHAR(32),
+    teacher_id VARCHAR(32),
+    batch_date DATE,
+    release_status VARCHAR(20) DEFAULT 'locked',
+    release_time DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 批次题目关联表
+CREATE TABLE IF NOT EXISTS homework_batch_question (
+    batch_id VARCHAR(32),
+    question_id VARCHAR(32),
+    PRIMARY KEY (batch_id, question_id),
+    FOREIGN KEY (batch_id) REFERENCES homework_batch(batch_id),
+    FOREIGN KEY (question_id) REFERENCES question(question_id)
+);
+
+-- 题目发布覆盖表
+CREATE TABLE IF NOT EXISTS question_release_override (
+    batch_id VARCHAR(32),
+    question_id VARCHAR(32),
+    released_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (batch_id, question_id),
+    FOREIGN KEY (batch_id) REFERENCES homework_batch(batch_id),
+    FOREIGN KEY (question_id) REFERENCES question(question_id)
+);
+
+-- ===== review2_ 系列：新复习体系持久化表（与旧 review_plan/push_record 体系隔离）=====
+
+CREATE TABLE IF NOT EXISTS review2_plan (
+    id VARCHAR(64) PRIMARY KEY,
+    student_id VARCHAR(32),
+    business_date DATE,
+    mode VARCHAR(20),
+    question_count INT,
+    time_limit_minutes INT,
+    priority_run_id VARCHAR(64),
+    status VARCHAR(20),
+    planning_config_version VARCHAR(50),
+    created_at DATETIME,
+    frozen_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS review2_plan_item (
+    plan_id VARCHAR(64),
+    position INT,
+    question_id VARCHAR(32),
+    status VARCHAR(20),
+    knowledge_point_ids TEXT,
+    planning_score TEXT,
+    PRIMARY KEY (plan_id, position),
+    FOREIGN KEY (plan_id) REFERENCES review2_plan(id)
+);
+
+CREATE TABLE IF NOT EXISTS review2_session (
+    id VARCHAR(64) PRIMARY KEY,
+    plan_id VARCHAR(64),
+    student_id VARCHAR(32),
+    status VARCHAR(20),
+    current_position INT,
+    elapsed_seconds INT,
+    started_at DATETIME,
+    resumed_at DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS review2_attempt (
+    id VARCHAR(64) PRIMARY KEY,
+    session_id VARCHAR(64),
+    question_id VARCHAR(32),
+    position INT,
+    selected_option INT,
+    student_answer TEXT,
+    is_correct INT,
+    analysis_status VARCHAR(20),
+    submitted_at DATETIME,
+    correction_count INT DEFAULT 0,
+    correction_is_correct INT,
+    correction_selected_option INT,
+    correction_answer TEXT,
+    correction_at DATETIME,
+    policy_version VARCHAR(50),
+    error_tags TEXT,
+    judge_method VARCHAR(20) DEFAULT 'fallback',
+    correction_error_tags TEXT,
+    correction_judge_method VARCHAR(20)
+);
 '''
 
 INITIAL_DATA = {
@@ -256,7 +346,19 @@ def init_database():
     cursor = conn.cursor()
     
     cursor.executescript(SCHEMA)
-    
+
+    # 迁移：为已存在的 review2_attempt 表补充新列（CREATE TABLE IF NOT EXISTS 不会改已有表）
+    for col, decl in [
+        ("error_tags", "TEXT"),
+        ("judge_method", "VARCHAR(20) DEFAULT 'fallback'"),
+        ("correction_error_tags", "TEXT"),
+        ("correction_judge_method", "VARCHAR(20)"),
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE review2_attempt ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass  # 列已存在
+
     column_mappings = {
         'knowledge': '(knowledge_id, knowledge_scope, knowledge_name, grade, textbook_version, unit, prerequisite, next_knowledge, difficulty, is_core)',
         'error_bank': '(error_id, level1, level2, level3, error_description, error_suggestion)',
@@ -283,7 +385,7 @@ def init_database():
     conn.close()
     
     print(f"Database initialized successfully at {DATABASE}")
-    print("Tables created: students, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit")
+    print("Tables created: students, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit, homework_batch, homework_batch_question, question_release_override")
     print("Initial data loaded for: knowledge(255+), error_bank(17), students(3), question(5), question_knowledge_mapping(5)")
 
 if __name__ == "__main__":
