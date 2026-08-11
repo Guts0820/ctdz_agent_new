@@ -1,0 +1,11 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+neo4j==5.18.0
+python-dotenv==1.0.0
+pydantic==2.5.2
+pandas==2.1.4
+torch==2.1.0
+transformers==4.36.0
+pillow==10.1.0
+pytesseract==0.3.10
+numpy==1.26.2
