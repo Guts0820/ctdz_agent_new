@@ -311,7 +311,7 @@ const TeacherPage = {
         };
 
         return `
-        <div class="space-y-4 pb-4">
+        <div class="space-y-4 pb-24">
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">📊 班级概况</div>
                 <div class="grid grid-cols-2 gap-3">
@@ -678,91 +678,44 @@ const TeacherPage = {
     },
 
     renderMistakes() {
-        const e = MockData.errorAnalysis;
+        // 异步加载真实高频错题
+        var cn = encodeURIComponent(this.currentClassName || '');
+        setTimeout(function() {
+            Api.fetch('/class/' + cn + '/mistake-stats').then(function(data) {
+                var items = data.data || [];
+                var c = document.getElementById('mistake-top5');
+                if (!c) return;
+                if (items.length === 0) {
+                    c.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">暂无错题数据</div>';
+                    return;
+                }
+                c.innerHTML = items.map(function(m, i) {
+                    return '<div class="p-3 bg-red-50 rounded-xl">' +
+                        '<div class="flex items-center gap-3">' +
+                            '<span class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">' + (i+1) + '</span>' +
+                            '<div class="flex-1"><div class="font-medium text-sm">' + (m.knowledge_id) + '</div>' +
+                            '<div class="text-xs text-gray-500">' + (m.error_types || []).join(', ') + '</div></div>' +
+                            '<div class="text-right"><div class="text-xl font-bold text-red-600">' + m.error_count + '</div><div class="text-xs text-gray-400">次</div></div>' +
+                        '</div>' +
+                        '<div class="w-full bg-white rounded-full h-1.5 mt-2"><div class="bg-red-500 h-1.5 rounded-full" style="width:' + Math.min(m.error_count * 10, 100) + '%"></div></div>' +
+                    '</div>';
+                }).join('');
+            }).catch(function() {});
+        }, 100);
 
         return `
-        <div class="space-y-4 pb-4">
-            <div class="bg-white rounded-2xl p-4 shadow-soft">
-                <div class="font-bold mb-3">📊 错误类型分布</div>
-                <canvas id="errorPieChart" height="200"></canvas>
-            </div>
-
+        <div class="space-y-4 pb-24">
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">⚠️ 高频错题TOP5</div>
-                <div class="space-y-2">
-                    ${MockData.getTeacherDashboard(1).highFrequencyMistakes.map((m, i) => `
-                        <div class="p-3 bg-red-50 rounded-xl">
-                            <div class="flex items-center gap-3">
-                                <span class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
-                                    ${i + 1}
-                                </span>
-                                <div class="flex-1">
-                                    <div class="font-medium text-sm">${m.knowledge_title}</div>
-                                    <div class="text-xs text-gray-500">${m.error_name}</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-xl font-bold text-red-600">${m.error_count}</div>
-                                    <div class="text-xs text-gray-400">次</div>
-                                </div>
-                            </div>
-                            <div class="w-full bg-white rounded-full h-1.5 mt-2">
-                                <div class="bg-red-500 h-1.5 rounded-full" style="width: ${m.error_count * 2}%"></div>
-                            </div>
-                            <div class="flex gap-2 mt-2">
-                                <span class="badge bg-gray-200 text-gray-600">${m.error_type}</span>
-                                <button onclick="TeacherPage.generatePractice('${m.knowledge_id}')" class="text-xs bg-purple-100 text-purple-600 px-2 rounded">
-                                    生成练习
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
+                <div id="mistake-top5" class="space-y-2">
+                    <div class="text-gray-400 text-sm text-center py-4">加载中...</div>
                 </div>
-            </div>
-
-            <div class="bg-white rounded-2xl p-4 shadow-soft">
-                <div class="font-bold mb-3">📈 知识点错误排行</div>
-                <canvas id="errorBarChart" height="200"></canvas>
             </div>
         </div>`;
     },
 
     initMistakesCharts() {
-        setTimeout(() => {
-            const e = MockData.errorAnalysis;
-
-            const pieCtx = document.getElementById('errorPieChart');
-            if (pieCtx) {
-                new Chart(pieCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: e.errorCategories.map(c => c.name),
-                        datasets: [{
-                            data: e.errorCategories.map(c => c.count),
-                            backgroundColor: ['#f5576c', '#f093fb', '#4facfe', '#43e97b', '#fa709a']
-                        }]
-                    }
-                });
-            }
-
-            const barCtx = document.getElementById('errorBarChart');
-            if (barCtx) {
-                new Chart(barCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: e.knowledgeErrorRanking.map(k => k.knowledge_title),
-                        datasets: [{
-                            label: '错误次数',
-                            data: e.knowledgeErrorRanking.map(k => k.error_count),
-                            backgroundColor: 'rgba(245, 87, 108, 0.7)'
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        scales: { x: { beginAtZero: true } }
-                    }
-                });
-            }
-        }, 100);
+        // 原型阶段简化：高频错题已通过 API 展示，真实数据来自 /api/class/{name}/mistake-stats
     },
 
     generatePractice(knowledgeId) {
@@ -771,47 +724,51 @@ const TeacherPage = {
 
     renderMastery() {
         return `
-        <div class="space-y-4 pb-4">
+        <div class="space-y-4 pb-24">
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">📈 知识点掌握度趋势</div>
                 <canvas id="masteryLineChart" height="200"></canvas>
             </div>
 
             <div class="bg-white rounded-2xl p-4 shadow-soft">
-                <div class="font-bold mb-3">📊 各知识点掌握度（示例数据）</div>
+                <div class="font-bold mb-3">📊 各知识点掌握度</div>
+                ${this.currentClassMastery.length === 0 ? '<div class="text-gray-400 text-sm text-center py-4">暂无数据</div>' : ''}
                 <div class="space-y-3">
-                    ${MockData.getTeacherDashboard(1).knowledgeMastery.map(k => `
-                        <div class="p-3 bg-gray-50 rounded-xl">
-                            <div class="flex items-center justify-between mb-1">
-                                <div class="font-medium text-sm">${k.knowledge_title}</div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold ${k.avg_mastery >= 80 ? 'text-green-600' : k.avg_mastery >= 60 ? 'text-yellow-600' : 'text-red-600'}">
-                                        ${k.avg_mastery}%
-                                    </span>
-                                    <span class="badge ${k.avg_mastery >= 80 ? 'bg-green-100 text-green-600' : k.avg_mastery >= 60 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}">
-                                        ${k.avg_mastery >= 80 ? '已掌握' : k.avg_mastery >= 60 ? '学习中' : '薄弱'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="${k.avg_mastery >= 80 ? 'bg-green-500' : k.avg_mastery >= 60 ? 'bg-yellow-500' : 'bg-red-500'} h-2 rounded-full" style="width: ${k.avg_mastery}%"></div>
-                            </div>
-                        </div>
-                    `).join('')}
+                    ${this.currentClassMastery.map(m => {
+                        var pct = Math.round(m.avg_mastery || 0);
+                        var color = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-yellow-600' : 'text-red-600';
+                        var barColor = pct >= 80 ? 'bg-green-500' : pct >= 60 ? 'bg-yellow-500' : 'bg-red-500';
+                        var badge = pct >= 80 ? '已掌握' : pct >= 60 ? '学习中' : '薄弱';
+                        var badgeColor = pct >= 80 ? 'bg-green-100 text-green-600' : pct >= 60 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600';
+                        return '<div class="p-3 bg-gray-50 rounded-xl">' +
+                            '<div class="flex items-center justify-between mb-1">' +
+                                '<div class="font-medium text-sm">' + (m.title || m.knowledge_id) + '</div>' +
+                                '<div class="flex items-center gap-2">' +
+                                    '<span class="font-bold ' + color + '">' + pct + '%</span>' +
+                                    '<span class="badge ' + badgeColor + '">' + badge + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="w-full bg-gray-200 rounded-full h-2">' +
+                                '<div class="' + barColor + ' h-2 rounded-full" style="width:' + pct + '%"></div>' +
+                            '</div>' +
+                        '</div>';
+                    }).join('')}
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl p-4 shadow-soft">
+            <div class="bg-white rounded-2xl p-4 shadow-soft mb-4">
                 <div class="font-bold mb-3">🎯 需重点关注的知识点</div>
+                ${this.currentClassMastery.filter(m => (m.avg_mastery || 0) < 60).length === 0 ?
+                    '<div class="text-gray-400 text-sm text-center py-4">暂无薄弱知识点 🎉</div>' : ''}
                 <div class="space-y-2">
-                    ${MockData.getTeacherDashboard(1).knowledgeMastery.filter(k => k.avg_mastery < 60).map(k => `
+                    ${this.currentClassMastery.filter(m => (m.avg_mastery || 0) < 60).map(m => `
                         <div class="p-3 bg-red-50 rounded-xl border border-red-100">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <div class="font-medium text-sm">${k.knowledge_title}</div>
-                                    <div class="text-xs text-red-500">班级平均掌握度较低</div>
+                                    <div class="font-medium text-sm">${m.title || m.knowledge_id}</div>
+                                    <div class="text-xs text-red-500">班级平均掌握度 ${Math.round(m.avg_mastery || 0)}% · ${m.student_count || 0}人</div>
                                 </div>
-                                <button onclick="TeacherPage.viewDetail('${k.knowledge_id}')" class="bg-red-500 text-white text-xs px-3 py-1 rounded-lg">查看详情</button>
+                                <button onclick="TeacherPage.viewDetail('${m.knowledge_id}')" class="bg-red-500 text-white text-xs px-3 py-1 rounded-lg flex-shrink-0">查看详情</button>
                             </div>
                         </div>
                     `).join('')}
@@ -822,22 +779,23 @@ const TeacherPage = {
 
     initMasteryCharts() {
         setTimeout(() => {
-            const d = MockData.getTeacherDashboard(1);
+            const d = TeacherPage.currentClassMastery || [];
+            console.log('[mastery chart] data count:', d.length);
             const ctx = document.getElementById('masteryLineChart');
-            if (ctx) {
+            if (ctx && d.length > 0) {
                 new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: d.knowledgeMastery.map(k => k.knowledge_title),
+                        labels: d.map(k => k.title || k.knowledge_id),
                         datasets: [{
                             label: '平均掌握度',
-                            data: d.knowledgeMastery.map(k => k.avg_mastery),
+                            data: d.map(k => Math.round(k.avg_mastery || 0)),
                             borderColor: '#11998e',
                             backgroundColor: 'rgba(17, 153, 142, 0.2)',
                             tension: 0.3,
                             fill: true,
-                            pointBackgroundColor: d.knowledgeMastery.map(k =>
-                                k.avg_mastery >= 80 ? '#28a745' : k.avg_mastery >= 60 ? '#ffc107' : '#dc3545'
+                            pointBackgroundColor: d.map(k =>
+                                (k.avg_mastery || 0) >= 80 ? '#28a745' : (k.avg_mastery || 0) >= 60 ? '#ffc107' : '#dc3545'
                             )
                         }]
                     },
@@ -849,8 +807,48 @@ const TeacherPage = {
         }, 100);
     },
 
-    viewDetail(knowledgeId) {
-        alert(`知识点 ${knowledgeId} 详情\n\n将展示：\n1. 该知识点的题目列表\n2. 学生错误详情\n3. 推荐教学方案\n\n（此功能需要对接知识图谱数据）`);
+    async viewDetail(knowledgeId) {
+        // 创建弹窗
+        var modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = '<div class="bg-white rounded-2xl w-full max-w-md max-h-[70vh] overflow-auto p-5">' +
+            '<div class="text-center py-4"><div class="text-2xl mb-2">⏳</div><div class="text-gray-500">加载中...</div></div>' +
+            '</div>';
+        document.body.appendChild(modal);
+
+        try {
+            var kp = await Api.fetch('/knowledge_points/' + knowledgeId);
+            var qList = [];
+            try {
+                var questions = await Api.fetch('/questions?knowledge_id=' + encodeURIComponent(knowledgeId) + '&page=1&page_size=5');
+                qList = questions.data || [];
+            } catch (e) {
+                // 题目查询失败时降级，不影响知识点详情查看
+                qList = [];
+            }
+            modal.querySelector('.bg-white').innerHTML =
+                '<div class="flex items-center justify-between mb-4">' +
+                    '<div class="font-bold text-lg">' + (kp.title || knowledgeId) + '</div>' +
+                    '<button onclick="this.closest(\'.fixed\').remove()" class="text-gray-400 text-xl">&times;</button>' +
+                '</div>' +
+                '<div class="space-y-3">' +
+                    '<div class="p-3 bg-blue-50 rounded-xl"><div class="text-xs text-gray-500">年级</div><div class="font-medium">' + (kp.grade || '—') + '年级 · ' + (kp.semester || '—') + '</div></div>' +
+                    '<div class="p-3 bg-blue-50 rounded-xl"><div class="text-xs text-gray-500">内容</div><div class="text-sm">' + (kp.content || kp.description || '暂无') + '</div></div>' +
+                    '<div class="p-3 bg-yellow-50 rounded-xl"><div class="text-xs text-gray-500">常见错误</div><div class="text-sm">' + (kp.common_mistakes || '暂无') + '</div></div>' +
+                    '<div class="p-3 bg-green-50 rounded-xl"><div class="text-xs text-gray-500">教学要点</div><div class="text-sm">' + (kp.teaching_points || '暂无') + '</div></div>' +
+                    '<div class="p-3 bg-gray-50 rounded-xl"><div class="text-xs text-gray-500">关联题目 (' + qList.length + '题)</div>' +
+                        qList.slice(0, 5).map(function(q) {
+                            return '<div class="text-sm mt-1 text-gray-700">' + (q.text || q.name || q.id) + '</div>';
+                        }).join('') +
+                    '</div>' +
+                '</div>' +
+                '<button onclick="this.closest(\'.fixed\').remove()" class="w-full mt-4 bg-gray-100 py-2 rounded-xl text-sm">关闭</button>';
+        } catch (e) {
+            modal.querySelector('.bg-white').innerHTML =
+                '<div class="text-center py-4"><div class="text-4xl mb-2">❌</div><div class="text-gray-500">加载失败</div>' +
+                '<div class="text-xs text-gray-400 mt-1">' + (e.message || '') + '</div>' +
+                '<button onclick="this.closest(\'.fixed\').remove()" class="w-full mt-4 bg-gray-100 py-2 rounded-xl text-sm">关闭</button></div>';
+        }
     },
 
     reviewPlansState: {
@@ -866,7 +864,7 @@ const TeacherPage = {
         const generating = this.reviewPlansState.generating;
 
         return `
-        <div class="space-y-4 pb-4">
+        <div class="space-y-4 pb-24">
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">📅 复习计划管理</div>
                 <div class="text-sm text-gray-500 mb-4">为学生生成个性化复习计划，基于知识图谱掌握度数据</div>

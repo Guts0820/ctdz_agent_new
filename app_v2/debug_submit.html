@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Submit Debug</title></head>
+<body style="font-family:monospace;padding:20px;">
+<h2>Submit Debug Tool</h2>
+<div id="log"></div>
+<script>
+const API = '/api';
+async function test() {
+    const log = document.getElementById('log');
+    function p(msg) { log.innerHTML += '<div style="margin:4px 0">' + msg + '</div>'; }
+
+    p('<b>1. Create plan...</b>');
+    let r = await fetch(API + '/review-plans', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({student_id:'S-DEBUG-001',mode:'question_count',question_count:2})
+    });
+    p('   Status: ' + r.status);
+    let plan = await r.json();
+    p('   Plan: ' + plan.id);
+
+    p('<b>2. Start session...</b>');
+    r = await fetch(API + '/review-plans/' + plan.id + '/start', {method:'POST'});
+    p('   Status: ' + r.status);
+    let session = await r.json();
+    p('   Session: ' + session.session_id);
+    p('   Question: ' + session.current_question.id + ' (' + session.current_question.question_type + ')');
+    p('   Answer: ' + session.current_question.answer);
+
+    p('<b>3. Submit attempt...</b>');
+    let body = JSON.stringify({
+        question_id: session.current_question.id,
+        selected_option: 0,
+        answer: session.current_question.answer || '2.4'
+    });
+    p('   Body: ' + body);
+    try {
+        r = await fetch(API + '/review-sessions/' + session.session_id + '/attempts', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body: body
+        });
+        p('   <b>Status: ' + r.status + '</b>');
+        let text = await r.text();
+        p('   Response: <pre>' + text.substring(0,500) + '</pre>');
+    } catch(e) {
+        p('   <b style="color:red">Fetch ERROR: ' + e.message + '</b>');
+    }
+}
+test();
+</script>
+</body></html>

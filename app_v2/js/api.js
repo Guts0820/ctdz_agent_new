@@ -1,4 +1,4 @@
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = '/api';
 
 const Api = {
     async fetch(endpoint, options = {}) {
@@ -133,22 +133,23 @@ const Api = {
         });
     },
 
-    async submitAttempt(sessionId, questionId, selectedOption, timeSpentSeconds) {
+    async submitAttempt(sessionId, questionId, selectedOption, answer, timeSpentSeconds) {
         return this.fetch('/review-sessions/' + sessionId + '/attempts', {
             method: 'POST',
             body: JSON.stringify({
                 question_id: questionId,
-                selected_option: selectedOption,
-                time_spent_seconds: timeSpentSeconds
+                selected_option: selectedOption || 0,
+                answer: answer || ''
             })
         });
     },
 
-    async submitCorrection(attemptId, selectedOption) {
+    async submitCorrection(attemptId, selectedOption, answer) {
         return this.fetch('/attempts/' + attemptId + '/correction', {
             method: 'POST',
             body: JSON.stringify({
-                selected_option: selectedOption
+                selected_option: selectedOption || 0,
+                answer: answer || ''
             })
         });
     },
@@ -270,6 +271,11 @@ const Api = {
 
     // 获取题目列表（用于批次选题）
     async getQuestionsForBatch(grade, knowledgeId, page, pageSize) {
-        return this.fetch('/questions?grade=' + (grade || '') + '&knowledge_id=' + (knowledgeId || '') + '&page=' + (page || 1) + '&page_size=' + (pageSize || 50));
+        var params = [];
+        if (grade) params.push('grade=' + grade);
+        if (knowledgeId) params.push('knowledge_id=' + knowledgeId);
+        params.push('page=' + (page || 1));
+        params.push('page_size=' + (pageSize || 50));
+        return this.fetch('/questions?' + params.join('&'));
     }
 };
