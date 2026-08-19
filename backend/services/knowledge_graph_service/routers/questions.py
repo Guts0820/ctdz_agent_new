@@ -265,10 +265,16 @@ def recommend_questions(request: RecommendRequest):
     questions_query = """
         MATCH (q:Question)-[:EXAMINES]->(k:KnowledgePoint)
         WHERE k.id IN $knowledge_ids
-        RETURN q ORDER BY q.difficulty LIMIT $limit
     """
+    params = {"knowledge_ids": knowledge_ids, "limit": count}
+    if request.difficulty:
+        difficulty_value = {"easy": 1, "medium": 2, "hard": 3}.get(request.difficulty.lower())
+        if difficulty_value is not None:
+            questions_query += " AND q.difficulty = $difficulty"
+            params["difficulty"] = difficulty_value
+    questions_query += " RETURN q ORDER BY q.difficulty, q.id LIMIT $limit"
     
-    questions_results = neo4j_conn.query(questions_query, {"knowledge_ids": knowledge_ids, "limit": count})
+    questions_results = neo4j_conn.query(questions_query, params)
     
     questions = []
     for record in questions_results:
