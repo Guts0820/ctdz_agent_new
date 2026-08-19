@@ -4,4 +4,4 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-backend/logs/*.log
+backend/logs/*.log*
