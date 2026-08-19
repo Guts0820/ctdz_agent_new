@@ -64,14 +64,14 @@ def retrieve_knowledge(request: KnowledgeRetrieveRequest):
     return KnowledgeRetrieveResponse(
         knowledge_explanation=knowledge.get("content", ""),
         difficulty=convert_difficulty(knowledge.get("difficulty", "medium")),
-        standard_solution="",
+        standard_solution=knowledge.get("standard_solution", ""),
         scope_validation=scope_validation,
-        prerequisite="",
-        next_knowledge="",
-        textbook_version=request.textbook_version,
-        unit="",
+        prerequisite=knowledge.get("prerequisite", ""),
+        next_knowledge=knowledge.get("next_knowledge", ""),
+        textbook_version=knowledge.get("textbook_version") or request.textbook_version,
+        unit=knowledge.get("unit", ""),
         common_errors=knowledge.get("common_mistakes", ""),
-        forbidden_explanation="",
+        forbidden_explanation=knowledge.get("forbidden_explanation", ""),
         example=knowledge.get("example", ""),
         teaching_tips=knowledge.get("teaching_points", "")
     )
@@ -88,7 +88,12 @@ def validate_scope(request: KnowledgeRetrieveRequest, knowledge: dict) -> bool:
         }
         allowed_grades = grade_mapping.get(request.grade, [])
         grade = knowledge.get("grade", "")
-        if grade != "—" and grade != "" and grade not in allowed_grades:
+        grade_names = {1: "一年级", 2: "二年级", 3: "三年级", 4: "四年级", 5: "五年级", 6: "六年级"}
+        if isinstance(grade, int):
+            grade = grade_names.get(grade, str(grade))
+        elif str(grade).strip().isdigit():
+            grade = grade_names.get(int(str(grade).strip()), str(grade).strip())
+        if grade not in {"—", "", None} and grade not in allowed_grades:
             return False
     
     return True

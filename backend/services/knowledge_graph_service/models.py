@@ -11,6 +11,12 @@ class KnowledgePoint(BaseModel):
     key_formulas: Optional[str] = None
     common_mistakes: Optional[str] = None
     teaching_points: Optional[str] = None
+    difficulty: Optional[str] = None
+    textbook_version: Optional[str] = None
+    unit: Optional[str] = None
+    prerequisite: Optional[str] = None
+    next_knowledge: Optional[str] = None
+    is_core: Optional[bool] = None
 
 class Question(BaseModel):
     id: Optional[str] = None

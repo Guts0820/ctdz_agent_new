@@ -6,3 +6,4 @@ __pycache__/
 .pytest_cache/
 backend/logs/*.log*
 backend/logs/*.err
+backend/user_data.db

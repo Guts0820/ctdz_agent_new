@@ -51,7 +51,13 @@ def get_knowledge_points(
             content=k.get("content"),
             key_formulas=k.get("key_formulas"),
             common_mistakes=k.get("common_mistakes"),
-            teaching_points=k.get("teaching_points")
+            teaching_points=k.get("teaching_points"),
+            difficulty=k.get("difficulty"),
+            textbook_version=k.get("textbook_version"),
+            unit=k.get("unit"),
+            prerequisite=k.get("prerequisite"),
+            next_knowledge=k.get("next_knowledge"),
+            is_core=k.get("is_core"),
         ))
     
     return KnowledgePointResponse(data=knowledge_points, total=total)
@@ -78,7 +84,13 @@ def get_knowledge_point(knowledge_id: str):
         content=k.get("content"),
         key_formulas=k.get("key_formulas"),
         common_mistakes=k.get("common_mistakes"),
-        teaching_points=k.get("teaching_points")
+        teaching_points=k.get("teaching_points"),
+        difficulty=k.get("difficulty"),
+        textbook_version=k.get("textbook_version"),
+        unit=k.get("unit"),
+        prerequisite=k.get("prerequisite"),
+        next_knowledge=k.get("next_knowledge"),
+        is_core=k.get("is_core"),
     )
 
 @router.get("/knowledge_hierarchy", response_model=List[KnowledgeHierarchyNode])

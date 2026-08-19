@@ -1,8 +1,12 @@
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+# The refactored project keeps shared Neo4j credentials in backend/.env.
+# A service-local .env, when present, remains higher priority.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 class Neo4jConnection:
     def __init__(self):

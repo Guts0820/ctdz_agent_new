@@ -4,6 +4,14 @@
 
 题库导入源统一位于 `database/knowledge_graph/image2_questions.json`。运行服务：`python -m backend.services.knowledge_graph_service.main`；候选召回：`GET /api/questions/candidates?text=...`；导入题库：`python backend/services/knowledge_graph_service/tools/import_image2_questions.py`。
 
+知识点和错因资产导入：
+
+```powershell
+python backend/services/knowledge_graph_service/tools/import_knowledge_data.py
+```
+
+该脚本幂等导入 `database/seed/knowledge_points.csv`、`database/seed/knowledge_explanations.csv` 和 `database/reference/三级错因标签.xlsx`，创建 `KnowledgePoint`、`ErrorCause` 节点，并按错因的“知识点范围”建立 `(:ErrorCause)-[:APPLIES_TO]->(:KnowledgePoint)` 关系。Excel 不可用时回退到 SQLite 的 `error_bank` 表。
+
 ## 向量检索
 
 知识图谱服务启动时创建 `Question.embedding` 的 Neo4j Vector Index。Embedding 使用 `backend/.env` 中的 Qwen 配置：
