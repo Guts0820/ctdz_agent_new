@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 
 def test_llm_tags_use_error_bank_hierarchy_and_clamped_confidence(monkeypatch):
@@ -123,3 +124,36 @@ def test_light_analysis_marks_low_confidence_when_llm_is_unavailable(monkeypatch
     assert response.low_confidence is True
     assert response.fallback_used is True
     assert response.total_confidence <= 0.6
+
+
+def test_error_analysis_links_answer_history_and_mistake_case(monkeypatch, tmp_path):
+    from backend.services.error_analysis_service import main as service
+
+    database = tmp_path / "pipeline.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE question (question_id TEXT, question_description TEXT);
+            CREATE TABLE answer_history (answer_history_id TEXT PRIMARY KEY, mistake_case_id TEXT, error_tags TEXT, reasoning_content TEXT);
+            CREATE TABLE mistake_case (mistake_case_id TEXT PRIMARY KEY, student_id TEXT, question_id TEXT, current_status TEXT, created_at TEXT);
+            CREATE TABLE mistake_case_error (mistake_case_id TEXT, error_id TEXT, error_weight REAL);
+            CREATE TABLE mistake_case_knowledge (mistake_case_id TEXT, knowledge_id TEXT, knowledge_weight REAL);
+            INSERT INTO answer_history (answer_history_id) VALUES ('AH001');
+            """
+        )
+    monkeypatch.setattr(service, "DATABASE", str(database))
+    tag = service.ErrorTag(error_id="C-001", level1="计算", level2="口算", level3="漏加进位", confidence=0.9)
+    monkeypatch.setattr(service, "analyze_error_with_llm", lambda _request: ([tag], {"id": "K035", "scope": "进位加法"}, "遗漏进位", 0.9))
+
+    response = service.analyze_error(service.ErrorAnalysisRequest(
+        student_id="S001", question_id="Q001", answer_history_id="AH001", original_question="25+38",
+        student_write="53", judge_result="wrong", core_error_type="计算错误", step_feedback="漏加进位",
+    ))
+
+    with sqlite3.connect(database) as connection:
+        history = connection.execute("SELECT mistake_case_id, error_tags, reasoning_content FROM answer_history WHERE answer_history_id='AH001'").fetchone()
+        teaching_link = connection.execute("SELECT knowledge_id FROM mistake_case_knowledge WHERE mistake_case_id=?", (response.mistake_case_id,)).fetchone()
+    assert history[0] == response.mistake_case_id
+    assert json.loads(history[1])[0]["error_id"] == "C-001"
+    assert history[2] == "遗漏进位"
+    assert teaching_link[0] == "K035"

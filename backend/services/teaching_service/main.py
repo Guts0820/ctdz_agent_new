@@ -42,6 +42,7 @@ class TeachingGenerateRequest(BaseModel):
     student_write: str
     difficulty: Optional[str] = "medium"
     grade: Optional[str] = "三年级"
+    mistake_case_id: Optional[str] = None
 
 
 class LLMTeachingContent(BaseModel):
@@ -232,7 +233,7 @@ def save_teaching_content(request: TeachingGenerateRequest, response: TeachingGe
                 practice_list, reasoning_content, master_level, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                generate_id("TC"), "", response.explanation,
+                generate_id("TC"), request.mistake_case_id or "", response.explanation,
                 json.dumps(response.hints, ensure_ascii=False),
                 json.dumps([item.model_dump() for item in response.practice_list], ensure_ascii=False),
                 response.reasoning_content, request.master_level, datetime.now().isoformat(),

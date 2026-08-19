@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from backend.api_gateway.models import SubmitRequest, SubmitResponse
 from backend.shared.config import DATABASE_PATH, OCR_MIN_CONFIDENCE
 from backend.api_gateway.services.analysis_client import analyze_submission
+from backend.api_gateway.services.downstream import execute_downstream, require_fields
 from backend.api_gateway.services.error_analysis_client import analyze_error
 from backend.api_gateway.services.knowledge_client import retrieve_knowledge
 from backend.api_gateway.services.knowledge_graph_client import fetch_question
@@ -117,8 +118,9 @@ def _build_error_analysis_payload(analysis: dict[str, Any]) -> dict[str, Any]:
         "error_step_list": analysis["error_step_list"],
         "miss_step_list": analysis["miss_step_list"],
         "confidence": analysis["confidence"],
+        "answer_history_id": analysis.get("answer_history_id"),
     }
-def _build_teaching_payload(error_analysis: dict[str, Any], master_level: float, analysis: dict[str, Any]) -> dict[str, Any]:
+def _build_teaching_payload(error_analysis: dict[str, Any], master_level: float, analysis: dict[str, Any], grade: str) -> dict[str, Any]:
     return {
         "error_tags": error_analysis["error_tags"],
         "knowledge_scope": error_analysis["knowledge_scope"],
@@ -127,13 +129,21 @@ def _build_teaching_payload(error_analysis: dict[str, Any], master_level: float,
         "original_question": analysis["original_question"],
         "student_write": analysis["student_write"],
         "difficulty": "medium",
-        "grade": "三年级",
+        "grade": grade,
+        "mistake_case_id": error_analysis.get("mistake_case_id"),
     }
+
+
 def process_submission(request: SubmitRequest) -> SubmitResponse:
     """Run the submission pipeline and shape the existing gateway response."""
     try:
         prepared = prepare_judging_input(request)
-        analysis = analyze_submission(prepared["analysis_request"])
+        analysis = execute_downstream("判题服务", lambda: analyze_submission(prepared["analysis_request"]))
+        analysis = require_fields(
+            "判题服务",
+            analysis,
+            {"judge_result", "step_feedback", "error_step_list", "miss_step_list", "is_copy", "core_error_type", "confidence", "original_question", "student_write"},
+        )
         ocr_data = {}
         if prepared["ocr_data"] is not None:
             source = prepared["ocr_data"]
@@ -142,29 +152,46 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
         if not question_id:
             raise HTTPException(status_code=422, detail="判题服务未返回匹配到的知识图谱题目")
         knowledge_id = analysis.get("knowledge_id") or prepared["knowledge_id"] or _lookup_knowledge_id(question_id)
-        if analysis["is_copy"]:
-            guide = generate_teaching({"error_tags": [], "knowledge_scope": "引导模式", "master_level": 0.9, "original_question": analysis["original_question"], "student_write": analysis["student_write"]})
-            return SubmitResponse(status="success", data={"judge_result": analysis["judge_result"], "is_copy": True, "hints": guide.get("hints", []), "explanation": "检测到疑似抄袭，请完成引导问题后重新提交", "next_action": "guide", **ocr_data})
         if analysis["judge_result"] == "correct":
             if not knowledge_id:
                 return SubmitResponse(status="success", data={"judge_result": "correct", "step_feedback": analysis["step_feedback"], "master_level": 1.0, "next_action": "guide", "warning": "无法确定题目对应的知识点，跳过状态更新", **ocr_data})
-            state = update_state(request.student_id, knowledge_id, True, analysis["confidence"])
+            state = execute_downstream("学习状态服务", lambda: update_state(request.student_id, knowledge_id, True, analysis["confidence"]))
+            state = require_fields("学习状态服务", state, {"master_level", "next_action"})
             return SubmitResponse(status="success", data={"judge_result": "correct", "step_feedback": analysis["step_feedback"], "knowledge_id": knowledge_id, "master_level": state["master_level"], "next_action": state["next_action"], **ocr_data})
-        error_analysis = analyze_error(_build_error_analysis_payload(analysis))
-        knowledge_id = knowledge_id or error_analysis.get("knowledge_id", "G-N-1-001")
-        knowledge_payload = {"knowledge_id": knowledge_id, "knowledge_scope": error_analysis.get("knowledge_scope", "")}
-        try:
-            knowledge = retrieve_knowledge(knowledge_payload)
-        except Exception:
-            knowledge = {"knowledge_explanation": knowledge_payload["knowledge_scope"] or knowledge_id, "difficulty": "medium", "standard_solution": ""}
-        frequency = check_frequency(request.student_id, knowledge_id)
+        error_analysis = execute_downstream("错因分析服务", lambda: analyze_error(_build_error_analysis_payload(analysis)))
+        error_analysis = require_fields(
+            "错因分析服务",
+            error_analysis,
+            {"error_tags", "knowledge_id", "knowledge_scope", "reasoning_content", "total_confidence", "low_confidence", "fallback_used"},
+        )
+        knowledge_id = error_analysis.get("knowledge_id") or knowledge_id
+        if not knowledge_id:
+            raise HTTPException(status_code=422, detail="错因分析未能确定知识点，无法继续生成教学内容")
+        knowledge_payload = {
+            "knowledge_id": knowledge_id,
+            "knowledge_scope": error_analysis.get("knowledge_scope", ""),
+            "grade": request.grade or "三年级",
+        }
+        knowledge = execute_downstream("知识服务", lambda: retrieve_knowledge(knowledge_payload))
+        knowledge = require_fields(
+            "知识服务", knowledge, {"knowledge_explanation", "difficulty", "standard_solution", "common_errors", "teaching_tips"}
+        )
+        frequency = execute_downstream("教学频控服务", lambda: check_frequency(request.student_id, knowledge_id))
+        frequency = require_fields("教学频控服务", frequency, {"push_permission"})
         if not frequency["push_permission"]:
-            state = update_state(request.student_id, knowledge_id, False, error_analysis["total_confidence"])
-            return SubmitResponse(status="success", data={"judge_result": analysis["judge_result"], "step_feedback": analysis["step_feedback"], "error_tags": error_analysis["error_tags"], "knowledge_scope": error_analysis["knowledge_scope"], "explanation": knowledge["knowledge_explanation"], "master_level": state["master_level"], "next_action": "frequency_limit_exceeded", "frequency_info": frequency, **ocr_data})
-        state = update_state(request.student_id, knowledge_id, False, error_analysis["total_confidence"])
-        teaching = generate_teaching(_build_teaching_payload(error_analysis, state["master_level"], analysis))
-        review = generate_review(request.student_id, knowledge_id, state["knowledge_mastery_id"], state["master_level"]) if state["should_generate_review"] else None
-        response_data = {"judge_result": analysis["judge_result"], "step_feedback": analysis["step_feedback"], "error_step_list": analysis["error_step_list"], "miss_step_list": analysis["miss_step_list"], "is_copy": analysis["is_copy"], "core_error_type": analysis["core_error_type"], "confidence": analysis["confidence"], "error_tags": error_analysis["error_tags"], "knowledge_id": knowledge_id, "knowledge_scope": error_analysis["knowledge_scope"], "knowledge_explanation": knowledge["knowledge_explanation"], "difficulty": knowledge["difficulty"], "standard_solution": knowledge["standard_solution"], "explanation": teaching["explanation"], "guided_explanation": teaching.get("guided_explanation", ""), "final_answer_explanation": teaching.get("final_answer_explanation", ""), "hints": teaching["hints"], "practice_list": teaching["practice_list"], "teaching_mode": teaching["teaching_mode"], "master_level": state["master_level"], "next_action": state["next_action"], "correct_count": state["correct_count"], "wrong_count": state["wrong_count"], "mastery_status": state["mastery_status"], "review_plan": review, **ocr_data}
+            state = execute_downstream("学习状态服务", lambda: update_state(request.student_id, knowledge_id, False, error_analysis["total_confidence"]))
+            state = require_fields("学习状态服务", state, {"master_level"})
+            return SubmitResponse(status="success", data={"judge_result": analysis["judge_result"], "step_feedback": analysis["step_feedback"], "error_tags": error_analysis["error_tags"], "knowledge_id": knowledge_id, "knowledge_scope": error_analysis["knowledge_scope"], "knowledge_explanation": knowledge["knowledge_explanation"], "master_level": state["master_level"], "next_action": "frequency_limit_exceeded", "frequency_info": frequency, "reasoning_content": error_analysis["reasoning_content"], "low_confidence": error_analysis["low_confidence"], "fallback_used": error_analysis["fallback_used"], **ocr_data})
+        state = execute_downstream("学习状态服务", lambda: update_state(request.student_id, knowledge_id, False, error_analysis["total_confidence"]))
+        state = require_fields("学习状态服务", state, {"master_level", "knowledge_mastery_id", "should_generate_review", "next_action", "correct_count", "wrong_count", "mastery_status"})
+        teaching = execute_downstream("教学生成服务", lambda: generate_teaching(_build_teaching_payload(error_analysis, state["master_level"], analysis, request.grade or "三年级")))
+        teaching = require_fields("教学生成服务", teaching, {"explanation", "hints", "practice_list", "teaching_mode", "fallback_used"})
+        review = None
+        if state["should_generate_review"]:
+            review = execute_downstream("复习计划服务", lambda: generate_review(request.student_id, knowledge_id, state["knowledge_mastery_id"], state["master_level"]))
+            review = require_fields("复习计划服务", review, {"review_plan_id", "status"})
+        fallback_used = bool(error_analysis["fallback_used"] or teaching["fallback_used"])
+        response_data = {"judge_result": analysis["judge_result"], "step_feedback": analysis["step_feedback"], "error_step_list": analysis["error_step_list"], "miss_step_list": analysis["miss_step_list"], "is_copy": analysis["is_copy"], "core_error_type": analysis["core_error_type"], "confidence": analysis["confidence"], "error_tags": error_analysis["error_tags"], "reasoning_content": error_analysis["reasoning_content"], "total_confidence": error_analysis["total_confidence"], "low_confidence": error_analysis["low_confidence"], "mistake_case_id": error_analysis.get("mistake_case_id"), "knowledge_id": knowledge_id, "knowledge_scope": error_analysis["knowledge_scope"], "knowledge_explanation": knowledge["knowledge_explanation"], "difficulty": knowledge["difficulty"], "standard_solution": knowledge["standard_solution"], "common_errors": knowledge["common_errors"], "teaching_tips": knowledge["teaching_tips"], "explanation": teaching["explanation"], "guided_explanation": teaching.get("guided_explanation", ""), "final_answer_explanation": teaching.get("final_answer_explanation", ""), "hints": teaching["hints"], "practice_list": teaching["practice_list"], "teaching_mode": teaching["teaching_mode"], "fallback_used": fallback_used, "error_analysis_fallback_used": error_analysis["fallback_used"], "teaching_fallback_used": teaching["fallback_used"], "fallback_reason": teaching.get("fallback_reason"), "practice_fallback_reason": teaching.get("practice_fallback_reason"), "master_level": state["master_level"], "next_action": state["next_action"], "correct_count": state["correct_count"], "wrong_count": state["wrong_count"], "mastery_status": state["mastery_status"], "review_plan": review, **ocr_data}
         if not _is_answer_released(question_id):
             response_data.update({"final_answer_explanation": None, "explanation": teaching.get("guided_explanation", ""), "answer_released": False})
         else:
@@ -173,4 +200,4 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
     except HTTPException:
         raise
     except Exception as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+        raise HTTPException(status_code=500, detail="提交编排发生未预期错误") from error

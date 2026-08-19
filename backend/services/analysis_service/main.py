@@ -51,6 +51,7 @@ class AnalysisResponse(BaseModel):
     student_id: str
     question_id: Optional[str] = None
     knowledge_id: Optional[str] = None
+    answer_history_id: Optional[str] = None
     question_match_confidence: Optional[float] = None
     question_match_reason: Optional[str] = None
     ocr_markdown: Optional[str] = None
@@ -185,6 +186,7 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
         standard_solve_steps=standard_solve_steps,
     )
 
+    answer_history_id = generate_id("AH")
     with get_db() as connection:
         connection.execute(
             """
@@ -196,7 +198,7 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                generate_id("AH"),
+                answer_history_id,
                 request.student_id,
                 question_id,
                 "首次错题",
@@ -222,6 +224,7 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
             "student_id": request.student_id,
             "question_id": question_id,
             "knowledge_id": knowledge_id,
+            "answer_history_id": answer_history_id,
             "question_match_confidence": question_match_confidence,
             "question_match_reason": question_match_reason,
             "ocr_markdown": None,

@@ -35,6 +35,7 @@ class ErrorAnalysisRequest(BaseModel):
     error_step_list: Optional[List[str]] = None
     miss_step_list: Optional[List[str]] = None
     confidence: Optional[float] = None
+    answer_history_id: Optional[str] = None
 
 class LightErrorAnalysisRequest(BaseModel):
     student_id: str
@@ -53,6 +54,7 @@ class ErrorAnalysisResponse(BaseModel):
     total_confidence: float = Field(ge=0.0, le=1.0)
     low_confidence: bool = False
     fallback_used: bool = False
+    mistake_case_id: Optional[str] = None
 
 
 LOW_CONFIDENCE_THRESHOLD = 0.7
@@ -457,6 +459,7 @@ def match_error_tags_light(request: LightErrorAnalysisRequest) -> List[ErrorTag]
 
 @app.post("/internal/api/v1/error-analysis/analyze", response_model=ErrorAnalysisResponse)
 def analyze_error(request: ErrorAnalysisRequest):
+    mistake_case_id = None
     if request.judge_result == "correct":
         return ErrorAnalysisResponse(
             error_tags=[],
@@ -511,6 +514,9 @@ def analyze_error(request: ErrorAnalysisRequest):
 
     low_confidence = total_confidence < LOW_CONFIDENCE_THRESHOLD
 
+    if not reasoning_content:
+        reasoning_content = generate_reasoning(request, error_tags, knowledge_info)
+
     # 低置信度时仍然持久化并返回结果，由调用方决定如何处理
     if error_tags or knowledge_info["id"]:
         with get_db() as conn:
@@ -543,10 +549,20 @@ def analyze_error(request: ErrorAnalysisRequest):
                     VALUES (?, ?, ?)
                 ''', (mistake_case_id, knowledge_info["id"], 1.0))
 
-            conn.commit()
+            if request.answer_history_id:
+                cursor.execute(
+                    """UPDATE answer_history
+                    SET mistake_case_id = ?, error_tags = ?, reasoning_content = ?
+                    WHERE answer_history_id = ?""",
+                    (
+                        mistake_case_id,
+                        json.dumps([tag.model_dump() for tag in error_tags], ensure_ascii=False),
+                        reasoning_content,
+                        request.answer_history_id,
+                    ),
+                )
 
-    if not reasoning_content:
-        reasoning_content = generate_reasoning(request, error_tags, knowledge_info)
+            conn.commit()
 
     return ErrorAnalysisResponse(
         error_tags=error_tags,
@@ -556,6 +572,7 @@ def analyze_error(request: ErrorAnalysisRequest):
         total_confidence=total_confidence,
         low_confidence=low_confidence,
         fallback_used=fallback_used,
+        mistake_case_id=mistake_case_id,
     )
 
 @app.post("/internal/api/v1/error-analysis/analyze-light", response_model=ErrorAnalysisResponse)

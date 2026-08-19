@@ -17,7 +17,7 @@
 | 疑似抄袭判断 | 未实现 |
 | 苏格拉底式引导追问与多轮对话 | 未实现 |
 | 知识点讲解、常见错误与教学提示检索 | 已实现 |
-| 讲解、提示与变式题生成 | 部分实现 |
+| 讲解、提示与变式题生成 | 已实现 |
 | BASIC / STANDARD / ADVANCED 教学分档 | 已实现 |
 | Mastery + Priority 联动更新 | 部分实现 |
 
@@ -31,6 +31,8 @@
 
 ## 开发规范
 Python 使用四空格、类型标注和 `snake_case`；前端使用原生 JavaScript 与 `camelCase`。配置从环境读取，`.env`、密钥、图片和生产数据不得提交。跨模块调用使用 HTTP 客户端，禁止跨服务导入业务实现。
+
+Git 提交信息使用 Conventional Commits 风格：保留 `feat:`、`fix:`、`test:`、`docs:` 等英文类型前缀，冒号后的标题正文使用中文。
 
 ## 常用命令
 安装后端基础依赖：`python -m pip install -r backend/requirements.txt`。初始化数据库：`python backend/tools/init_sqlite_database.py`。启动后端：`python backend/start_all.py`。后端测试：`python -m pytest backend/tests -q`。前端测试：`node --test frontend/tests/ocr-upload-policy.test.js`。

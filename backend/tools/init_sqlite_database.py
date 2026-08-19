@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS answer_history (
     answer_history_id VARCHAR(32) PRIMARY KEY,
     student_id VARCHAR(32),
     question_id VARCHAR(32),
+    mistake_case_id VARCHAR(32),
     submit_type VARCHAR(50),
     submit_count INTEGER DEFAULT 1,
     ocr_question TEXT,
@@ -81,6 +82,8 @@ CREATE TABLE IF NOT EXISTS answer_history (
     is_copy BOOLEAN DEFAULT 0,
     core_error_type VARCHAR(100),
     confidence FLOAT DEFAULT 0.0,
+    error_tags TEXT,
+    reasoning_content TEXT,
     submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(student_id),
     FOREIGN KEY (question_id) REFERENCES question(question_id)
@@ -358,6 +361,16 @@ def init_database():
             cursor.execute(f"ALTER TABLE review2_attempt ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
             pass  # 列已存在
+
+    for col, decl in [
+        ("mistake_case_id", "VARCHAR(32)"),
+        ("error_tags", "TEXT"),
+        ("reasoning_content", "TEXT"),
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE answer_history ADD COLUMN {col} {decl}")
+        except sqlite3.OperationalError:
+            pass
 
     column_mappings = {
         'knowledge': '(knowledge_id, knowledge_scope, knowledge_name, grade, textbook_version, unit, prerequisite, next_knowledge, difficulty, is_core)',
