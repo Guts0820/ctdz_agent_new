@@ -63,7 +63,7 @@ def validate_judging_input(content: str) -> dict[str, object]:
         normalized = normalized[:-3]
 
     try:
-        payload = json.loads(normalized.strip())
+        payload = _normalize_model_payload(json.loads(normalized.strip()), required_key="question")
     except json.JSONDecodeError as error:
         raise ValueError("Qwen OCR output is not valid JSON.") from error
 
@@ -87,7 +87,7 @@ def validate_standard_answer_input(content: str) -> dict[str, object]:
         normalized = normalized[:-3]
 
     try:
-        payload = json.loads(normalized.strip())
+        payload = _normalize_model_payload(json.loads(normalized.strip()), required_key="questions")
     except json.JSONDecodeError as error:
         raise ValueError("Qwen OCR standard-answer output is not valid JSON.") from error
 
@@ -100,3 +100,21 @@ def validate_standard_answer_input(content: str) -> dict[str, object]:
         return StandardAnswerInput.model_validate(payload).model_dump(mode="json")
     except ValidationError as error:
         raise ValueError("Qwen OCR standard-answer output failed JSON Schema validation.") from error
+
+
+def _normalize_model_payload(payload: object, *, required_key: str) -> object:
+    """Remove schema metadata occasionally echoed by multimodal models.
+
+    The model is shown a JSON Schema in the prompt. Some successful responses
+    echo root-level ``$defs``/``$schema`` metadata alongside the actual result.
+    Those metadata keys are not part of the response contract, so discard them
+    only when the expected result key is present; all normal field validation
+    remains strict below.
+    """
+    if not isinstance(payload, dict) or required_key not in payload:
+        return payload
+    return {
+        key: value
+        for key, value in payload.items()
+        if key not in {"$defs", "$schema"}
+    }
