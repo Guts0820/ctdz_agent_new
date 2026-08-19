@@ -1,0 +1,40 @@
+{
+  "markdown": "# 手写文本识别结果\n\n## 识别文本\n\n题目：4 下面右边的三幅照片分别是在哪个位置拍的？把相应的序号填在括号里。\n学生作答：（3） （1） （2）\n\n## 识别信息\n\n- 引擎：qwen3-vl-plus\n- 质量评分：98%\n- 状态：success\n",
+  "confidence": 0.98,
+  "engine": "qwen3-vl-plus",
+  "fallback_used": false,
+  "status": "success",
+  "blocks": [],
+  "raw_json": null,
+  "questions": [],
+  "analysis_input": {
+    "schema_version": "1.0",
+    "question": {
+      "text": "4 下面右边的三幅照片分别是在哪个位置拍的？把相应的序号填在括号里。",
+      "explanation": "题目考查空间观察与视角对应关系：根据左侧主图中标注的三个拍摄位置（①在广场中央旗杆处、②在天安门城楼左侧、③在天安门城楼右侧），判断右侧三张照片分别是从哪个位置拍摄的。需结合每张照片中天安门建筑、旗杆、绿化带等元素的相对位置与遮挡关系进行匹配。",
+      "visual_context": [
+        {
+          "kind": "image",
+          "description": "左侧为一张天安门广场全景图，图中天安门城楼居中，前方有旗杆；图上标有三个圆圈序号：①位于旗杆正前方地面，②位于画面左侧靠近城楼左翼，③位于画面右侧靠近城楼右翼。"
+        },
+        {
+          "kind": "image",
+          "description": "右侧上方照片显示天安门城楼右侧视角，可见城楼右侧红墙、绿植及远处山体，下方括号内手写数字“3”。"
+        },
+        {
+          "kind": "image",
+          "description": "右侧中间照片显示天安门城楼正面略偏左视角，旗杆居中偏左，城楼完整可见，下方括号为空白。"
+        },
+        {
+          "kind": "image",
+          "description": "右侧下方照片显示天安门城楼左侧视角，可见城楼左侧红墙、绿植及近处花坛，下方括号内手写数字“2”。"
+        }
+      ]
+    },
+    "student_answer": {
+      "text": "（3） （1） （2）"
+    },
+    "confidence": 0.98,
+    "review_required": false
+  }
+}

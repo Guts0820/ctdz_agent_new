@@ -1,0 +1,22 @@
+from backend.shared.config import (
+    ANALYSIS_SERVICE_URL,
+    ERROR_ANALYSIS_SERVICE_URL,
+    KNOWLEDGE_GRAPH_URL,
+    KNOWLEDGE_SERVICE_URL,
+    TEACHER_SERVICE_URL,
+    REVIEW_SERVICE_URL,
+    STATE_SERVICE_URL,
+    TEACHING_SERVICE_URL,
+)
+
+
+SERVICE_URLS = {
+    "analysis": ANALYSIS_SERVICE_URL,
+    "error_analysis": ERROR_ANALYSIS_SERVICE_URL,
+    "knowledge": KNOWLEDGE_SERVICE_URL,
+    "teaching": TEACHING_SERVICE_URL,
+    "teacher": TEACHER_SERVICE_URL,
+    "state": STATE_SERVICE_URL,
+    "review": REVIEW_SERVICE_URL,
+    "knowledge_graph": KNOWLEDGE_GRAPH_URL,
+}

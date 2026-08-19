@@ -1,0 +1,32 @@
+{
+  "markdown": "# 手写文本识别结果\n\n## 识别文本\n\n题目：1. 按要求整理卡片，填一填。\n（1）按图案分一分，涂一涂。\n学生作答：6张 4张 3张 最多的与最少的相差3张\n\n## 识别信息\n\n- 引擎：qwen3-vl-plus\n- 质量评分：95%\n- 状态：success\n",
+  "confidence": 0.95,
+  "engine": "qwen3-vl-plus",
+  "fallback_used": false,
+  "status": "success",
+  "blocks": [],
+  "raw_json": null,
+  "questions": [],
+  "analysis_input": {
+    "schema_version": "1.0",
+    "question": {
+      "text": "1. 按要求整理卡片，填一填。\n（1）按图案分一分，涂一涂。",
+      "explanation": "题目考查学生根据图形特征进行分类的能力。已知条件：共有16张卡片，图案分为三类——五角星（☆）、月亮（☾）、太阳（☀），需按图案种类分别计数并填写数量；最后求最多与最少的类别数量之差。",
+      "visual_context": [
+        {
+          "kind": "image",
+          "description": "两行共16个图形卡片：第一行依次为☆、△、☆、☾、□、☀、☆、△；第二行依次为△、☀、□、△、□、☀、☆、☾。其中△、□为干扰图形，不参与分类。"
+        },
+        {
+          "kind": "diagram",
+          "description": "下方有三列圆圈图示，每列上方标有对应图案（☆、☾、☀），用于涂色表示分类结果；每列下方有对应图案符号。"
+        }
+      ]
+    },
+    "student_answer": {
+      "text": "6张 4张 3张 最多的与最少的相差3张"
+    },
+    "confidence": 0.95,
+    "review_required": false
+  }
+}
