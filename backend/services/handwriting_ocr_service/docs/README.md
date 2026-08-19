@@ -24,12 +24,12 @@ QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 OCR 发往 Qwen 的 HTTP 请求默认直连，不使用系统 `HTTP_PROXY` 或 `HTTPS_PROXY`。
 
-统一联调时使用仓库根目录的 Python 3.11 环境：
+统一联调时使用仓库的 Python 3.11 虚拟环境：
 
 ```powershell
-..\.venv311\Scripts\python.exe -m pip install -r requirements.txt
-..\.venv311\Scripts\python.exe -m pytest tests -q
-..\.venv311\Scripts\python.exe -m uvicorn app.main:app --port 8089 --workers 1
+D:\ctdz_agent_venv\Scripts\python.exe -m pip install -r requirements.txt
+D:\ctdz_agent_venv\Scripts\python.exe -m pytest tests -q
+D:\ctdz_agent_venv\Scripts\python.exe -m uvicorn app.main:app --port 8089 --workers 1
 ```
 
 `OCR_ENGINE=paddleocr_vl` 可切换到本地引擎。本地开发的 `OCR_RUNTIME_ENV=development` 默认 CPU，服务部署使用 `production` 默认 GPU；设备配置只影响 Paddle 模式。

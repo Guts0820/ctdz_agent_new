@@ -385,13 +385,24 @@ const StudentPage = {
         const reader = new FileReader();
         reader.onload = async () => {
             try {
-                const resp = await fetch('http://127.0.0.1:8089/v1/recognize', {
-                    method: 'POST',
-                    body: (() => { const fd = new FormData(); fd.append('image', file); return fd; })()
-                });
+                const user = MockData.currentUser || {};
+                const studentId = user.userId || user.id || 'S-0001';
+                const gradeValue = user.grade || '三年级';
+                const gradeNames = ['零年级', '一年级', '二年级', '三年级', '四年级', '五年级', '六年级'];
+                const grade = typeof gradeValue === 'number' ? gradeNames[gradeValue] : gradeValue;
+                const gatewayResponse = await Api.submitImage(studentId, reader.result, grade || '三年级');
                 loadDiv.remove();
-                if (resp.ok) {
-                    const data = await resp.json();
+                if (gatewayResponse && gatewayResponse.status === 'success' && gatewayResponse.data) {
+                    this._ocrUploadRound = null;
+                    this._showSubmissionResult(gatewayResponse.data, reader.result);
+                    return;
+                }
+                if (gatewayResponse && gatewayResponse.data && gatewayResponse.data.ocr) {
+                    this._showSubmissionResult(gatewayResponse.data, reader.result);
+                    return;
+                }
+                if (gatewayResponse) {
+                    const data = gatewayResponse.data || gatewayResponse;
                     const rawMarkdown = data.markdown || '';
                     const confidence = parseFloat(data.confidence || 0);
                     const confidencePct = (confidence * 100).toFixed(0);
@@ -469,15 +480,57 @@ const StudentPage = {
                         '</div>' +
                         '</div>';
                     document.body.appendChild(div);
-                } else {
-                    this._showOcrServiceFailureDialog();
-                }
+                } else this._showOcrServiceFailureDialog();
             } catch (e) {
                 loadDiv.remove();
-                this._showOcrServiceFailureDialog();
+                const message = e && e.message ? e.message : '网关未返回有效结果';
+                this._showOcrServiceFailureDialog(message);
             }
         };
         reader.readAsDataURL(file);
+    },
+
+    _escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+
+    _showSubmissionResult(data, imageData) {
+        const safe = this._escapeHtml.bind(this);
+        const tags = Array.isArray(data.error_tags) && data.error_tags.length
+            ? data.error_tags.map(function(tag) { return '<li><b>' + safe(tag.level3 || tag.error_id) + '</b>（' + safe(tag.level1) + ' / ' + safe(tag.level2) + '）</li>'; }).join('')
+            : '<li>暂无可确认的具体错因</li>';
+        const hints = Array.isArray(data.hints) && data.hints.length
+            ? data.hints.map(function(item) { return '<li>' + safe(item) + '</li>'; }).join('')
+            : '<li>暂无提示</li>';
+        const practices = Array.isArray(data.practice_list) && data.practice_list.length
+            ? data.practice_list.map(function(item) {
+                return '<div class="p-3 border rounded-xl"><div class="font-medium">' + safe(item.question_description) + '</div><div class="text-xs text-gray-500 mt-1">难度：' + safe(item.difficulty) + ' · 答案：' + safe(item.answer) + '</div><div class="text-xs text-gray-600 mt-1">' + safe(item.solution) + '</div></div>';
+            }).join('')
+            : '<div class="text-sm text-gray-500">暂无已核验变式题' + (data.practice_fallback_reason ? '：' + safe(data.practice_fallback_reason) : '') + '</div>';
+        const wrong = data.judge_result === 'wrong';
+        const statusText = data.judge_result === 'correct' ? '判定正确' : wrong ? '判定错误' : '暂无法判定';
+        const statusClass = data.judge_result === 'correct' ? 'text-green-700 bg-green-50' : wrong ? 'text-red-700 bg-red-50' : 'text-yellow-700 bg-yellow-50';
+        const answerExplanation = data.answer_released === false ? '<div class="text-sm text-gray-500">完整答案暂未放行，请先完成引导订正。</div>' : safe(data.final_answer_explanation || '暂无完整讲解');
+        const dialog = document.createElement('div');
+        dialog.className = 'submission-result-dialog fixed inset-0 bg-black/50 z-50 flex items-end';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.innerHTML = '<div class="bg-white w-full max-h-[90vh] rounded-t-3xl overflow-auto">' +
+            '<div class="sticky top-0 bg-white px-5 py-4 border-b flex items-center justify-between"><div class="font-bold text-lg">拍照判题结果</div><span class="px-2 py-1 rounded-full text-xs ' + statusClass + '">' + statusText + '</span></div>' +
+            '<div class="p-5 space-y-4">' +
+            (imageData ? '<img src="' + safe(imageData) + '" class="w-full max-h-40 object-contain bg-gray-100 rounded-xl" alt="提交的作业图片">' : '') +
+            '<div class="p-3 rounded-xl bg-gray-50"><div class="text-xs text-gray-500">错因标签</div><ul class="list-disc pl-5 mt-1 text-sm space-y-1">' + tags + '</ul></div>' +
+            '<div class="p-3 rounded-xl bg-blue-50"><div class="text-xs text-gray-500">关联知识点</div><div class="font-medium mt-1">' + safe(data.knowledge_scope || data.knowledge_id || '未确定') + '</div><div class="text-sm mt-2">' + safe(data.knowledge_explanation || '暂无知识点讲解') + '</div></div>' +
+            '<div class="p-3 rounded-xl bg-amber-50"><div class="text-xs text-gray-500">教学提示</div><ul class="list-disc pl-5 mt-1 text-sm space-y-1">' + hints + '</ul></div>' +
+            '<div class="p-3 rounded-xl bg-purple-50"><div class="text-xs text-gray-500">引导讲解</div><div class="text-sm mt-1 whitespace-pre-wrap">' + safe(data.guided_explanation || data.explanation || '暂无引导讲解') + '</div><div class="text-xs text-gray-500 mt-3">完整讲解</div><div class="text-sm mt-1 whitespace-pre-wrap">' + answerExplanation + '</div></div>' +
+            '<div><div class="font-medium mb-2">变式练习 · ' + safe(data.teaching_mode || '') + '</div><div class="space-y-2">' + practices + '</div></div>' +
+            (data.review_plan ? '<div class="text-sm text-green-700 bg-green-50 rounded-xl p-3">已生成复习计划：' + safe(data.review_plan.review_plan_id || '') + '</div>' : '') +
+            (data.fallback_used ? '<div class="text-xs text-gray-500">本次部分内容使用降级方案：' + safe(data.fallback_reason || '下游服务未提供完整结果') + '</div>' : '') +
+            '<button type="button" class="w-full bg-purple-600 text-white rounded-xl py-3 font-medium" onclick="this.closest(\'.submission-result-dialog\').remove()">完成</button>' +
+            '</div></div>';
+        document.body.appendChild(dialog);
     },
 
     _showLowConfidenceUploadDialog(confidence) {
@@ -520,7 +573,7 @@ const StudentPage = {
         this._openImagePicker(true, true);
     },
 
-    _showOcrServiceFailureDialog() {
+    _showOcrServiceFailureDialog(message) {
         const dialog = document.createElement('div');
         dialog.className = 'fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center';
         dialog.setAttribute('role', 'alertdialog');
@@ -528,7 +581,7 @@ const StudentPage = {
         dialog.innerHTML =
             '<div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 space-y-4">' +
                 '<h2 class="font-bold text-lg text-gray-900">暂时无法识别照片</h2>' +
-                '<p class="text-sm text-gray-600">识别服务未返回有效结果，本次照片不会进入判题模块。</p>' +
+                '<p class="text-sm text-gray-600">' + this._escapeHtml(message || '识别服务未返回有效结果，本次照片不会进入判题模块。') + '</p>' +
                 '<button type="button" class="w-full bg-purple-600 text-white rounded-xl py-3 font-medium" onclick="this.closest(\'.fixed\').remove(); StudentPage.selectImage()">重新选择照片</button>' +
             '</div>';
         document.body.appendChild(dialog);

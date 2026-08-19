@@ -12,7 +12,14 @@ const Api = {
                 ...options
             });
             if (!response.ok) {
-                throw new Error('API请求失败: ' + response.status);
+                let detail = '';
+                try {
+                    const errorBody = await response.json();
+                    detail = errorBody && (errorBody.detail || errorBody.message) ? ': ' + (errorBody.detail || errorBody.message) : '';
+                } catch (_) {
+                    // Preserve the HTTP status when the response is not JSON.
+                }
+                throw new Error('API请求失败: ' + response.status + detail);
             }
             return await response.json();
         } catch (error) {
@@ -27,6 +34,17 @@ const Api = {
         if (className) params.push('class_name=' + encodeURIComponent(className));
         const query = params.length > 0 ? '?' + params.join('&') : '';
         return this.fetch('/students/' + query);
+    },
+
+    async submitImage(studentId, image, grade) {
+        return this.fetch('/v1/submit', {
+            method: 'POST',
+            body: JSON.stringify({
+                student_id: studentId,
+                image: image,
+                grade: grade || '三年级'
+            })
+        });
     },
 
     async getClasses() {

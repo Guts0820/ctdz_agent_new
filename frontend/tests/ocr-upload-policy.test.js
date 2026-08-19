@@ -38,3 +38,27 @@ test('student upload flow checks the policy before displaying OCR results', () =
     assert.match(studentPageSource, /_showLowConfidenceUploadDialog/);
     assert.match(studentPageSource, /retryOcrUpload/);
 });
+
+test('student upload submits the image through the gateway and renders the teaching result', () => {
+    const studentPageSource = fs.readFileSync(
+        path.join(__dirname, '../js/student.js'),
+        'utf8',
+    );
+    const apiSource = fs.readFileSync(path.join(__dirname, '../js/api.js'), 'utf8');
+
+    assert.match(apiSource, /async submitImage\(studentId, image, grade\)/);
+    assert.match(apiSource, /this\.fetch\('\/v1\/submit'/);
+    assert.match(studentPageSource, /Api\.submitImage\(studentId, reader\.result/);
+    assert.match(studentPageSource, /_showSubmissionResult/);
+    assert.match(studentPageSource, /error_tags/);
+    assert.match(studentPageSource, /knowledge_explanation/);
+    assert.match(studentPageSource, /practice_list/);
+    assert.match(studentPageSource, /guided_explanation/);
+    assert.doesNotMatch(studentPageSource, /fetch\(['"]http:\/\/127\.0\.0\.1:8089\/v1\/recognize/);
+});
+
+test('api client preserves gateway error details', () => {
+    const apiSource = fs.readFileSync(path.join(__dirname, '../js/api.js'), 'utf8');
+    assert.match(apiSource, /errorBody\.detail/);
+    assert.match(apiSource, /API请求失败: ' \+ response\.status \+ detail/);
+});
