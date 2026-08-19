@@ -19,8 +19,16 @@ def test_judge_compares_normalized_student_answer_with_knowledge_graph_standard_
     assert result["core_error_type"] == ""
 
 
-def test_judge_marks_a_different_answer_as_wrong_without_using_question_specific_rules() -> None:
+def test_judge_marks_a_different_answer_as_wrong_without_using_question_specific_rules(monkeypatch) -> None:
     from backend.services.analysis_service import main as analysis_service
+
+    # This test verifies the deterministic fallback, not a live provider's
+    # preferred wording for the error type.
+    monkeypatch.setattr(
+        analysis_service,
+        "judge_with_llm",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("LLM unavailable")),
+    )
 
     result = analysis_service.judge_against_standard_answer(
         question="任意题目",
