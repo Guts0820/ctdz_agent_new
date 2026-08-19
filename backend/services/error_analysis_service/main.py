@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from typing import List, Optional, Tuple, Dict
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import sqlite3
 import requests
 from backend.shared.id_utils import generate_id
@@ -22,7 +22,7 @@ class ErrorTag(BaseModel):
     level1: str
     level2: str
     level3: str
-    confidence: float
+    confidence: float = Field(ge=0.0, le=1.0)
 
 class ErrorAnalysisRequest(BaseModel):
     student_id: str
@@ -50,8 +50,12 @@ class ErrorAnalysisResponse(BaseModel):
     knowledge_id: str
     knowledge_scope: str
     reasoning_content: str
-    total_confidence: float
+    total_confidence: float = Field(ge=0.0, le=1.0)
     low_confidence: bool = False
+    fallback_used: bool = False
+
+
+LOW_CONFIDENCE_THRESHOLD = 0.7
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -115,14 +119,17 @@ def is_answer_invalid(student_write: str) -> bool:
     return False
 
 def fetch_candidate_errors() -> List[Dict]:
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT error_id, level1, level2, level3, error_description 
-            FROM error_bank
-        ''')
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+    try:
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT error_id, level1, level2, level3, error_description
+                FROM error_bank
+            ''')
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+    except sqlite3.Error:
+        return []
 
 def fetch_candidate_knowledge() -> List[Dict]:
     global _knowledge_cache
@@ -147,6 +154,39 @@ def fetch_candidate_knowledge() -> List[Dict]:
         return all_knowledge
     except requests.exceptions.RequestException:
         return []
+
+
+def clamp_confidence(value: object, default: float = 0.0) -> float:
+    """Normalize model/fallback confidence without allowing invalid values."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = default
+    return max(0.0, min(1.0, number))
+
+
+def aggregate_confidence(tags: List[ErrorTag], reported: object) -> float:
+    """Use model confidence conservatively and cap it by validated tag evidence."""
+    normalized_reported = clamp_confidence(reported)
+    if not tags:
+        return min(normalized_reported, 0.4)
+    tag_average = sum(tag.confidence for tag in tags) / len(tags)
+    return min(normalized_reported, tag_average)
+
+
+def canonicalize_error_tag(tag_data: dict, candidates_by_id: Dict[str, Dict]) -> Optional[ErrorTag]:
+    """Trust the error bank for hierarchy labels; trust the model only for confidence."""
+    error_id = str(tag_data.get("error_id", "")).strip()
+    candidate = candidates_by_id.get(error_id)
+    if not candidate:
+        return None
+    return ErrorTag(
+        error_id=error_id,
+        level1=str(candidate.get("level1") or ""),
+        level2=str(candidate.get("level2") or ""),
+        level3=str(candidate.get("level3") or ""),
+        confidence=clamp_confidence(tag_data.get("confidence"), default=0.0),
+    )
 
 def analyze_error_with_llm(request: ErrorAnalysisRequest) -> Tuple[List[ErrorTag], Dict, str, float]:
     error_candidates = fetch_candidate_errors()
@@ -241,14 +281,19 @@ def analyze_error_with_llm(request: ErrorAnalysisRequest) -> Tuple[List[ErrorTag
     except json.JSONDecodeError:
         raise ValueError("LLM返回格式错误，无法解析JSON")
     
-    valid_error_ids = {e["error_id"] for e in error_candidates}
+    candidates_by_id = {
+        str(e.get("error_id")): e
+        for e in error_candidates
+        if e.get("error_id")
+    }
     valid_knowledge_ids = {k["id"] for k in knowledge_candidates}
     
     error_tags = []
     for tag_data in parsed.get("error_tags", []):
-        if tag_data.get("error_id") not in valid_error_ids:
-            continue
-        error_tags.append(ErrorTag(**tag_data))
+        if isinstance(tag_data, dict):
+            tag = canonicalize_error_tag(tag_data, candidates_by_id)
+            if tag is not None:
+                error_tags.append(tag)
     
     knowledge_id = parsed.get("knowledge_id", "")
     if knowledge_id not in valid_knowledge_ids:
@@ -262,7 +307,7 @@ def analyze_error_with_llm(request: ErrorAnalysisRequest) -> Tuple[List[ErrorTag
                 break
     
     reasoning_content = parsed.get("reasoning_content", "")
-    total_confidence = parsed.get("total_confidence", 0.0)
+    total_confidence = aggregate_confidence(error_tags, parsed.get("total_confidence", 0.0))
     
     return error_tags, {"id": knowledge_id, "scope": knowledge_scope}, reasoning_content, total_confidence
 
@@ -349,26 +394,24 @@ def analyze_error_with_llm_light(request: LightErrorAnalysisRequest) -> Tuple[Li
     except json.JSONDecodeError:
         raise ValueError("LLM返回格式错误，无法解析JSON")
     
-    valid_error_ids = {e["error_id"] for e in error_candidates}
+    candidates_by_id = {
+        str(e.get("error_id")): e
+        for e in error_candidates
+        if e.get("error_id")
+    }
     
     error_tags = []
     for tag_data in parsed.get("error_tags", []):
         eid = tag_data.get("error_id", "")
-        if eid not in valid_error_ids:
+        if eid not in candidates_by_id:
             continue
-        conf = float(tag_data.get("confidence", 0.5))
-        if conf > 0.6:
-            conf = 0.6
-        error_tags.append(ErrorTag(
-            error_id=eid,
-            level1=tag_data.get("level1", ""),
-            level2=tag_data.get("level2", ""),
-            level3=tag_data.get("level3", ""),
-            confidence=conf
-        ))
+        canonical = canonicalize_error_tag(tag_data, candidates_by_id)
+        if canonical is None:
+            continue
+        error_tags.append(canonical.model_copy(update={"confidence": min(canonical.confidence, 0.6)}))
     
     reasoning_content = parsed.get("reasoning_content", "")
-    total_confidence = min(float(parsed.get("total_confidence", 0.0)), 0.6)
+    total_confidence = min(aggregate_confidence(error_tags, parsed.get("total_confidence", 0.0)), 0.6)
     
     return error_tags, {}, reasoning_content, total_confidence
 
@@ -420,7 +463,8 @@ def analyze_error(request: ErrorAnalysisRequest):
             knowledge_id="",
             knowledge_scope="",
             reasoning_content="答案正确，无需错因分析",
-            total_confidence=1.0
+            total_confidence=1.0,
+            low_confidence=False,
         )
     
     if is_answer_invalid(request.student_write):
@@ -429,17 +473,24 @@ def analyze_error(request: ErrorAnalysisRequest):
             knowledge_id="",
             knowledge_scope="",
             reasoning_content="学生未提供有效作答内容，无法判断具体错因，建议教师人工核实。",
-            total_confidence=0.2
+            total_confidence=0.2,
+            low_confidence=True,
+            fallback_used=True,
         )
     
     reasoning_content = ""
+    fallback_used = False
 
     try:
         error_tags, knowledge_info, reasoning_content, total_confidence = analyze_error_with_llm(request)
     except Exception:
+        fallback_used = True
         error_tags = match_error_tags(request)
         knowledge_info = map_knowledge(request, error_tags)
-        total_confidence = sum(tag.confidence for tag in error_tags) / len(error_tags) if error_tags else 0.0
+        total_confidence = aggregate_confidence(
+            error_tags,
+            sum(tag.confidence for tag in error_tags) / len(error_tags) if error_tags else 0.0,
+        )
 
     # LLM 返回了结果但 error_tags 为空或 knowledge_id 无效 → 降级到规则匹配
     if not error_tags or not knowledge_info["id"]:
@@ -448,13 +499,17 @@ def analyze_error(request: ErrorAnalysisRequest):
         if fallback_tags:
             error_tags = fallback_tags
             knowledge_info = fallback_knowledge
-            total_confidence = sum(tag.confidence for tag in error_tags) / len(error_tags) if error_tags else 0.0
+            total_confidence = aggregate_confidence(
+                error_tags,
+                sum(tag.confidence for tag in error_tags) / len(error_tags) if error_tags else 0.0,
+            )
+            fallback_used = True
     
     if not error_tags or not knowledge_info["id"]:
         original_confidence = total_confidence
-        total_confidence = min(original_confidence, 0.4)
-    
-    low_confidence = total_confidence < 0.7
+        total_confidence = min(clamp_confidence(original_confidence), 0.4)
+
+    low_confidence = total_confidence < LOW_CONFIDENCE_THRESHOLD
 
     # 低置信度时仍然持久化并返回结果，由调用方决定如何处理
     if error_tags or knowledge_info["id"]:
@@ -499,7 +554,8 @@ def analyze_error(request: ErrorAnalysisRequest):
         knowledge_scope=knowledge_info["scope"],
         reasoning_content=reasoning_content,
         total_confidence=total_confidence,
-        low_confidence=low_confidence
+        low_confidence=low_confidence,
+        fallback_used=fallback_used,
     )
 
 @app.post("/internal/api/v1/error-analysis/analyze-light", response_model=ErrorAnalysisResponse)
@@ -510,18 +566,25 @@ def analyze_error_light(request: LightErrorAnalysisRequest):
             knowledge_id=request.knowledge_id,
             knowledge_scope="",
             reasoning_content="学生未提供有效作答内容，无法判断具体错因。",
-            total_confidence=0.2
+            total_confidence=0.2,
+            low_confidence=True,
+            fallback_used=True,
         )
     
     reasoning_content = ""
     error_tags = []
     total_confidence = 0.0
+    fallback_used = False
     
     try:
         error_tags, _, reasoning_content, total_confidence = analyze_error_with_llm_light(request)
     except Exception:
+        fallback_used = True
         error_tags = match_error_tags_light(request)
-        total_confidence = sum(tag.confidence for tag in error_tags) / len(error_tags) if error_tags else 0.0
+        total_confidence = aggregate_confidence(
+            error_tags,
+            sum(tag.confidence for tag in error_tags) / len(error_tags) if error_tags else 0.0,
+        )
         reasoning_content = f"学生答案'{request.student_write}'与正确答案'{request.correct_answer}'存在差异，可能原因：{', '.join([tag.level3 for tag in error_tags])}。由于仅有最终答案，置信度较低。"
     
     knowledge_id = request.knowledge_id
@@ -542,7 +605,9 @@ def analyze_error_light(request: LightErrorAnalysisRequest):
         knowledge_id=knowledge_id,
         knowledge_scope=knowledge_scope,
         reasoning_content=reasoning_content,
-        total_confidence=total_confidence
+        total_confidence=clamp_confidence(total_confidence),
+        low_confidence=clamp_confidence(total_confidence) < LOW_CONFIDENCE_THRESHOLD,
+        fallback_used=fallback_used,
     )
 
 # === 以下为降级方案，仅在 LLM 调用失败时使用 ===
