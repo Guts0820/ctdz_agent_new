@@ -58,6 +58,8 @@ def test_wrong_answer_runs_full_pipeline_in_order(monkeypatch):
     assert calls == ["analysis", "error", "knowledge", "frequency", "state", "teaching", "review"]
     assert response.status == "success"
     assert response.data["mistake_case_id"] == "MC001"
+    assert response.data["original_question"] == "25+38等于多少？"
+    assert response.data["student_write"] == "53"
     assert response.data["fallback_used"] is True
     assert response.data["error_analysis_fallback_used"] is False
     assert response.data["teaching_fallback_used"] is True

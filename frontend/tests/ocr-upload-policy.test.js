@@ -62,3 +62,15 @@ test('api client preserves gateway error details', () => {
     assert.match(apiSource, /errorBody\.detail/);
     assert.match(apiSource, /API请求失败: ' \+ response\.status \+ detail/);
 });
+
+test('mistake correction uses the real mistake case API without fixed answers', () => {
+    const studentPageSource = fs.readFileSync(path.join(__dirname, '../js/student.js'), 'utf8');
+    const apiSource = fs.readFileSync(path.join(__dirname, '../js/api.js'), 'utf8');
+
+    assert.match(apiSource, /async submitMistakeCorrection\(mistakeCaseId, originalQuestion, newAnswer\)/);
+    assert.match(apiSource, /\/v1\/mistakes\/.*\/correction/);
+    assert.match(studentPageSource, /Api\.submitMistakeCorrection\(mistakeCaseId, item\.question_text/);
+    assert.match(studentPageSource, /mistake_case_id/);
+    assert.doesNotMatch(studentPageSource, /9 \+ 4 \+ 5 = \?/);
+    assert.doesNotMatch(studentPageSource, /answer\.trim\(\) === '18'/);
+});

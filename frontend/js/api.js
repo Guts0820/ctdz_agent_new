@@ -172,6 +172,16 @@ const Api = {
         });
     },
 
+    async submitMistakeCorrection(mistakeCaseId, originalQuestion, newAnswer) {
+        return this.fetch('/v1/mistakes/' + encodeURIComponent(mistakeCaseId) + '/correction', {
+            method: 'POST',
+            body: JSON.stringify({
+                original_question: originalQuestion,
+                new_answer: newAnswer
+            })
+        });
+    },
+
     // ============ 错题本 API ============
 
     async addWrongQuestion(userId, questionId, wrongAnswer = null, errorCauseId = null) {

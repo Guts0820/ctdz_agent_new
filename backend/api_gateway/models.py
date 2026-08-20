@@ -17,6 +17,32 @@ class SubmitResponse(BaseModel):
     data: dict
 
 
+class MistakeCorrectionRequest(BaseModel):
+    original_question: str
+    new_answer: str
+
+
+class MistakeCorrectionResponse(BaseModel):
+    mistake_case_id: str
+    answer_history_id: str
+    question_id: str
+    original_question: str
+    new_answer: str
+    judge_result: str
+    is_correct: bool
+    mistake_status: str
+    teaching_mode: str
+    teaching_difficulty: str
+    submit_type: str
+    submit_count: int
+    master_level: float | None = None
+    mastery: float | None = None
+    priority: float | None = None
+    next_action: str | None = None
+    state_sync_status: str
+    step_feedback: str
+
+
 class ExternalErrorAnalyzeRequest(BaseModel):
     student_id: int
     question_id: str

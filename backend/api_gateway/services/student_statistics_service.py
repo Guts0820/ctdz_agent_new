@@ -27,19 +27,54 @@ def get_student_stats(student_id: str) -> dict:
     with get_gateway_db() as connection:
         total = connection.execute("SELECT COUNT(*) AS total FROM answer_history WHERE student_id = ?", (student_id,)).fetchone()["total"]
         correct = connection.execute("SELECT COUNT(*) AS total FROM answer_history WHERE student_id = ? AND is_correct = 1", (student_id,)).fetchone()["total"]
-        wrong = connection.execute("SELECT COUNT(*) AS total FROM answer_history WHERE student_id = ? AND is_correct = 0", (student_id,)).fetchone()["total"]
-        reviewed = connection.execute("SELECT COUNT(*) AS total FROM review2_attempt WHERE student_answer IS NOT NULL AND correction_is_correct IS NOT NULL").fetchone()["total"]
+        wrong = connection.execute(
+            "SELECT COUNT(*) AS total FROM mistake_case WHERE student_id = ?",
+            (student_id,),
+        ).fetchone()["total"]
+        reviewed = connection.execute(
+            "SELECT COUNT(*) AS total FROM mistake_case WHERE student_id = ? AND current_status = 'corrected'",
+            (student_id,),
+        ).fetchone()["total"]
     return {"total_questions": total, "correct_rate": round(correct / total * 100) if total else 0, "total_mistakes": wrong, "reviewed_mistakes": reviewed}
 
 
 def get_wrong_answers(student_id: str) -> dict:
     with get_gateway_db() as connection:
         rows = connection.execute(
-            """SELECT ah.answer_history_id, ah.question_id, ah.student_ocr_answer, ah.core_error_type,
-                      ah.submitted_at, q.question_description
-               FROM answer_history ah LEFT JOIN question q ON ah.question_id = q.question_id
-               WHERE ah.student_id = ? AND ah.is_correct = 0 ORDER BY ah.submitted_at DESC""",
+            """SELECT mc.mistake_case_id, mc.question_id, mc.current_status, mc.created_at,
+                      initial.student_ocr_answer, initial.core_error_type, initial.ocr_question,
+                      q.question_description,
+                      (SELECT COUNT(*) FROM answer_history attempts
+                       WHERE attempts.mistake_case_id = mc.mistake_case_id
+                         AND attempts.submit_type = '错题订正') AS correction_count,
+                      (SELECT latest.student_ocr_answer FROM answer_history latest
+                       WHERE latest.mistake_case_id = mc.mistake_case_id
+                         AND latest.submit_type = '错题订正'
+                       ORDER BY latest.submitted_at DESC LIMIT 1) AS correction_answer,
+                      (SELECT latest.submitted_at FROM answer_history latest
+                       WHERE latest.mistake_case_id = mc.mistake_case_id
+                         AND latest.submit_type = '错题订正'
+                       ORDER BY latest.submitted_at DESC LIMIT 1) AS corrected_at
+               FROM mistake_case mc
+               LEFT JOIN answer_history initial ON initial.answer_history_id = (
+                   SELECT ah.answer_history_id FROM answer_history ah
+                   WHERE ah.mistake_case_id = mc.mistake_case_id
+                   ORDER BY ah.submitted_at LIMIT 1
+               )
+               LEFT JOIN question q ON mc.question_id = q.question_id
+               WHERE mc.student_id = ? ORDER BY mc.created_at DESC""",
             (student_id,),
         ).fetchall()
-    data = [{"id": row["answer_history_id"], "question_id": row["question_id"], "question_text": row["question_description"] or row["question_id"] or "", "student_answer": row["student_ocr_answer"] or "", "error_type": row["core_error_type"] or "未知", "date": row["submitted_at"] or "", "reviewed": False, "wrong_count": 1} for row in rows]
+    data = [{
+        "id": row["mistake_case_id"], "mistake_case_id": row["mistake_case_id"],
+        "question_id": row["question_id"],
+        "question_text": row["ocr_question"] or row["question_description"] or row["question_id"] or "",
+        "student_answer": row["student_ocr_answer"] or "",
+        "correction_answer": row["correction_answer"] or "",
+        "error_type": row["core_error_type"] or "未知",
+        "date": row["corrected_at"] or row["created_at"] or "",
+        "last_wrong_time": row["created_at"] or "",
+        "status": row["current_status"], "reviewed": row["current_status"] == "corrected",
+        "wrong_count": 1, "correction_count": row["correction_count"],
+    } for row in rows]
     return {"student_id": student_id, "total": len(data), "data": data}

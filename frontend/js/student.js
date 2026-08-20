@@ -1,4 +1,6 @@
 const StudentPage = {
+    _correctionCases: {},
+
     render() {
         return `
         <div class="min-h-screen pb-20">
@@ -510,6 +512,13 @@ const StudentPage = {
             }).join('')
             : '<div class="text-sm text-gray-500">暂无已核验变式题' + (data.practice_fallback_reason ? '：' + safe(data.practice_fallback_reason) : '') + '</div>';
         const wrong = data.judge_result === 'wrong';
+        if (wrong && data.mistake_case_id) {
+            this._correctionCases[data.mistake_case_id] = {
+                mistake_case_id: data.mistake_case_id,
+                question_text: data.original_question || '',
+                student_answer: data.student_write || ''
+            };
+        }
         const statusText = data.judge_result === 'correct' ? '判定正确' : wrong ? '判定错误' : '暂无法判定';
         const statusClass = data.judge_result === 'correct' ? 'text-green-700 bg-green-50' : wrong ? 'text-red-700 bg-red-50' : 'text-yellow-700 bg-yellow-50';
         const answerExplanation = data.answer_released === false ? '<div class="text-sm text-gray-500">完整答案暂未放行，请先完成引导订正。</div>' : safe(data.final_answer_explanation || '暂无完整讲解');
@@ -528,6 +537,7 @@ const StudentPage = {
             '<div><div class="font-medium mb-2">变式练习 · ' + safe(data.teaching_mode || '') + '</div><div class="space-y-2">' + practices + '</div></div>' +
             (data.review_plan ? '<div class="text-sm text-green-700 bg-green-50 rounded-xl p-3">已生成复习计划：' + safe(data.review_plan.review_plan_id || '') + '</div>' : '') +
             (data.fallback_used ? '<div class="text-xs text-gray-500">本次部分内容使用降级方案：' + safe(data.fallback_reason || '下游服务未提供完整结果') + '</div>' : '') +
+            (wrong && data.mistake_case_id ? '<button type="button" class="w-full bg-red-500 text-white rounded-xl py-3 font-medium" onclick="StudentPage.doCorrection(\'' + safe(data.mistake_case_id) + '\')">立即订正</button>' : '') +
             '<button type="button" class="w-full bg-purple-600 text-white rounded-xl py-3 font-medium" onclick="this.closest(\'.submission-result-dialog\').remove()">完成</button>' +
             '</div></div>';
         document.body.appendChild(dialog);
@@ -587,99 +597,73 @@ const StudentPage = {
         document.body.appendChild(dialog);
     },
 
-    showMockResult() {
-        const result = `
-        <div class="bg-white rounded-2xl p-4 shadow-soft">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="badge bg-green-100 text-green-600">✓ 识别成功</span>
-                <span class="text-sm text-gray-500">识别出 3 道题目</span>
-            </div>
-            
-            <div class="space-y-3">
-                <div class="p-3 border border-gray-200 rounded-xl">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-medium text-sm">第1题</span>
-                        <span class="badge bg-green-100 text-green-600">✓ 正确</span>
-                    </div>
-                    <div class="text-sm mb-2">6 + 7 + 6 = ?</div>
-                    <div class="text-xs text-gray-500">你的答案: 19 ✓ 正确答案: 19</div>
-                </div>
-                
-                <div class="p-3 border border-red-200 bg-red-50 rounded-xl">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-medium text-sm">第2题</span>
-                        <span class="badge bg-red-100 text-red-600">✗ 错误</span>
-                    </div>
-                    <div class="text-sm mb-2">9 + 4 + 5 = ?</div>
-                    <div class="text-xs mb-1">你的答案: 17 ✗ 正确答案: 18</div>
-                    <div class="text-xs text-orange-600">⚠️ 错因分析：20以内加减法不熟练</div>
-                    <button onclick="StudentPage.doCorrection()" class="mt-2 bg-red-500 text-white text-sm px-3 py-1 rounded-lg">立即订正</button>
-                </div>
-                
-                <div class="p-3 border border-green-200 rounded-xl">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="font-medium text-sm">第3题</span>
-                        <span class="badge bg-green-100 text-green-600">✓ 正确</span>
-                    </div>
-                    <div class="text-sm mb-2">12 - 5 + 8 = ?</div>
-                    <div class="text-xs text-gray-500">你的答案: 15 ✓ 正确答案: 15</div>
-                </div>
-            </div>
-            
-            <div class="mt-4 p-3 bg-yellow-50 rounded-xl">
-                <div class="text-sm font-medium text-yellow-800">📊 本次作业统计</div>
-                <div class="text-xs text-yellow-600 mt-1">正确率: 67% | 新增错题: 1 道</div>
-            </div>
-            
-            <button onclick="StudentPage.navigate('mistakes')" class="w-full mt-4 bg-purple-600 text-white rounded-xl py-3 font-medium">
-                查看错题本 →
-            </button>
-        </div>`;
-        
-        const content = document.getElementById('student-content');
-        const existingDiv = document.createElement('div');
-        existingDiv.className = 'fixed inset-0 bg-black/50 z-50 flex items-end';
-        existingDiv.innerHTML = `
-            <div class="bg-white w-full max-h-[80vh] rounded-t-3xl overflow-auto">
-                <div class="sticky top-0 bg-white p-4 border-b">
-                    <div class="font-bold text-lg">📷 作业识别结果</div>
-                </div>
-                <div class="p-4">${result}</div>
-                <button onclick="this.closest('.fixed').remove()" class="w-full bg-gray-100 py-3 rounded-xl mb-4">关闭</button>
-            </div>
-        `;
-        document.body.appendChild(existingDiv);
-    },
-    
-    doCorrection() {
+    doCorrection(mistakeCaseId) {
+        var item = this._correctionCases[mistakeCaseId];
+        if (!item) {
+            alert('未找到对应错题，请刷新错题本后重试');
+            return;
+        }
+        var safe = this._escapeHtml.bind(this);
         const correctionDiv = document.createElement('div');
+        correctionDiv.id = 'mistake-correction-dialog';
         correctionDiv.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
         correctionDiv.innerHTML = `
             <div class="bg-white rounded-2xl p-5 w-full max-w-sm">
                 <div class="text-center mb-4">
                     <div class="text-4xl mb-2">✏️</div>
                     <div class="font-bold text-lg">订正练习</div>
-                    <div class="text-sm text-gray-500">下面的题目做对了吗？</div>
+                    <div class="text-sm text-gray-500">重新完成这道错题</div>
                 </div>
                 <div class="p-4 bg-gray-50 rounded-xl mb-4">
-                    <div class="font-medium">9 + 4 + 5 = ?</div>
+                    <div class="font-medium">${safe(item.question_text)}</div>
+                    <div class="text-xs text-red-600 mt-2">上次答案：${safe(item.student_answer || '未记录')}</div>
                 </div>
                 <input id="correction-answer" type="text" placeholder="输入你的答案" class="w-full border rounded-xl px-4 py-3 mb-4 text-center text-lg">
-                <button onclick="StudentPage.checkCorrection()" class="w-full bg-purple-600 text-white rounded-xl py-3 font-medium">提交答案</button>
+                <div id="correction-feedback" class="hidden text-sm rounded-xl p-3 mb-3"></div>
+                <button id="correction-submit" onclick="StudentPage.checkCorrection('${safe(mistakeCaseId)}')" class="w-full bg-purple-600 text-white rounded-xl py-3 font-medium">提交答案</button>
                 <button onclick="this.closest('.fixed').remove()" class="w-full mt-2 text-gray-500 py-2">取消</button>
             </div>
         `;
         document.body.appendChild(correctionDiv);
     },
     
-    checkCorrection() {
+    async checkCorrection(mistakeCaseId) {
         const answer = document.getElementById('correction-answer').value;
-        if (answer.trim() === '18') {
-            alert('✅ 回答正确！已计入错题本，将加入复习计划');
-            document.querySelectorAll('.fixed').forEach(el => el.remove());
-        } else {
-            alert('❌ 回答错误，请再试一次');
+        if (!answer.trim()) {
+            alert('请输入订正答案');
+            return;
         }
+        var item = this._correctionCases[mistakeCaseId];
+        if (!item) return;
+        var button = document.getElementById('correction-submit');
+        var feedback = document.getElementById('correction-feedback');
+        button.disabled = true;
+        button.textContent = '判定中...';
+        try {
+            var result = await Api.submitMistakeCorrection(mistakeCaseId, item.question_text, answer.trim());
+            feedback.classList.remove('hidden', 'bg-red-50', 'text-red-700', 'bg-green-50', 'text-green-700');
+            feedback.classList.add(result.is_correct ? 'bg-green-50' : 'bg-red-50');
+            feedback.classList.add(result.is_correct ? 'text-green-700' : 'text-red-700');
+            feedback.textContent = (result.is_correct ? '订正正确，错题已完成。' : '答案仍不正确，请根据反馈继续订正。') +
+                ' 教学难度：' + result.teaching_difficulty + '。' + (result.step_feedback || '');
+            if (result.is_correct) {
+                delete this._correctionCases[mistakeCaseId];
+                this._homeStats = null;
+                button.textContent = '完成';
+                button.onclick = function() {
+                    var dialog = document.getElementById('mistake-correction-dialog');
+                    if (dialog) dialog.remove();
+                    StudentPage.navigate('mistakes');
+                };
+                return;
+            }
+        } catch (error) {
+            feedback.classList.remove('hidden');
+            feedback.className = 'text-sm rounded-xl p-3 mb-3 bg-red-50 text-red-700';
+            feedback.textContent = '订正提交失败：' + (error.message || '请重试');
+        }
+        button.disabled = false;
+        button.textContent = '再次提交';
     },
     
     showReviewPlan() {
@@ -1145,6 +1129,7 @@ const StudentPage = {
         if (uncorrected.length > 0) {
             html += '<div class="bg-white rounded-2xl p-4 shadow-soft mt-4"><div class="font-bold mb-3">📝 待订正错题</div><div class="space-y-3">';
             uncorrected.forEach(function(m) {
+                StudentPage._correctionCases[m.mistake_case_id || m.id] = m;
                 var qText = qTextMap[m.question_id] || m.question_id;
                 var date = (m.last_wrong_time || '').substring(0, 10);
                 html += '<div class="p-3 bg-red-50 rounded-xl border border-red-100">' +
@@ -1154,6 +1139,7 @@ const StudentPage = {
                     '<span class="badge bg-red-200 text-red-700 flex-shrink-0">#' + m.id + '</span></div>' +
                     '<div class="bg-white p-2 rounded text-xs mb-2"><span class="text-gray-500">你的答案: </span><span class="text-red-600 font-medium">' + (m.student_answer || '(未记录)') + '</span></div>' +
                     '<div class="bg-orange-50 p-2 rounded text-xs text-orange-700">💡 错因: ' + (m.error_type || '未分类') + '</div>' +
+                    '<button onclick="StudentPage.doCorrection(\'' + (m.mistake_case_id || m.id) + '\')" class="w-full mt-3 bg-red-500 text-white rounded-lg py-2 text-sm">立即订正</button>' +
                     '</div>';
             });
             html += '</div></div>';
