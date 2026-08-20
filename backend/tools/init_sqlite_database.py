@@ -125,6 +125,10 @@ CREATE TABLE IF NOT EXISTS teaching_content (
     practice_list TEXT,
     reasoning_content TEXT,
     master_level FLOAT DEFAULT 0.0,
+    priority FLOAT DEFAULT 0.0,
+    formula_version VARCHAR(50),
+    mastery_components TEXT,
+    priority_components TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (mistake_case_id) REFERENCES mistake_case(mistake_case_id)
 );

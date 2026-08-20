@@ -76,3 +76,27 @@ class PriorityRunResponse(BaseModel):
     results: list[PriorityResult]
     formula_version: str
     created: bool
+
+
+class MasteryUpdateRequest(BaseModel):
+    student_id: str
+    knowledge_id: str
+    is_correct: bool
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    answer_history_id: str | None = None
+    mistake_case_id: str | None = None
+
+
+class MasteryUpdateResponse(BaseModel):
+    knowledge_mastery_id: str
+    master_level: float
+    mastery: float
+    priority: float
+    mastery_status: str
+    next_action: str
+    correct_count: int
+    wrong_count: int
+    should_generate_review: bool
+    components: PriorityComponents
+    mastery_components: MasteryComponents
+    formula_version: str

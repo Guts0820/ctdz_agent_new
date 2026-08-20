@@ -38,6 +38,7 @@ def install_common(monkeypatch, calls):
     monkeypatch.setattr(gateway, "check_frequency", lambda *_args: calls.append("frequency") or {"push_permission": True})
     monkeypatch.setattr(gateway, "update_state", lambda *_args: calls.append("state") or {
         "master_level": 0.3, "knowledge_mastery_id": "KM001", "should_generate_review": True,
+        "mastery": 30.0, "priority": 72.5,
         "next_action": "basic_practice", "correct_count": 0, "wrong_count": 1, "mastery_status": "pending",
     })
     def teaching(payload):
@@ -112,5 +113,8 @@ def test_correct_answer_skips_error_knowledge_and_teaching(monkeypatch):
     install_common(monkeypatch, calls)
     monkeypatch.setattr(gateway, "analyze_submission", lambda _payload: calls.append("analysis") or analysis_result("correct"))
     response = gateway.process_submission(SubmitRequest(student_id="S001", question_id="Q001", original_question="题目", student_write="63"))
-    assert calls == ["analysis", "state"]
+    assert calls == ["analysis", "state", "review"]
     assert response.data["judge_result"] == "correct"
+    assert response.data["mastery"] == 30.0
+    assert response.data["priority"] == 72.5
+    assert response.data["review_plan"]["review_plan_id"] == "RP001"

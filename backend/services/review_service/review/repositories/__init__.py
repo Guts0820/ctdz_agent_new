@@ -7,7 +7,7 @@ from uuid import uuid4
 from backend.shared.neo4j_connection import neo4j_conn
 from backend.services.review_service.review.domain.enums import AnalysisStatus, Difficulty, ItemStatus, PlanMode, PlanStatus
 from backend.services.review_service.review.integrations.neo4j_contracts import Neo4jKnowledgeGraphClient
-from backend.services.review_service.review.schemas.priority import KnowledgeStateInput, PriorityRunResponse
+from backend.services.review_service.review.schemas.priority import KnowledgeStateInput, PracticeEvidence, PriorityRunResponse
 from backend.services.review_service.review.schemas.review import (
     PlanningScoreBreakdown,
     QuestionInternal,
@@ -69,6 +69,13 @@ DIFFICULTY_MAP = {
     "advanced": Difficulty.ADVANCED,
 }
 
+ERROR_SEVERITY_BY_LEVEL1 = {
+    "概念": 0.9,
+    "审题": 0.6,
+    "计算": 0.5,
+    "粗心": 0.3,
+}
+
 
 class Neo4jRepository:
     def __init__(self) -> None:
@@ -80,6 +87,46 @@ class Neo4jRepository:
 
     def now(self) -> datetime:
         return datetime.now()
+
+    def save_mastery(self, result, state: KnowledgeStateInput, mastery_status: str) -> str:
+        """Persist the Review model as the single SQLite mastery read model."""
+        with _get_review_db() as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(knowledge_mastery)")}
+            migrations = {
+                "priority": "ALTER TABLE knowledge_mastery ADD COLUMN priority FLOAT DEFAULT 0",
+                "formula_version": "ALTER TABLE knowledge_mastery ADD COLUMN formula_version VARCHAR(50)",
+                "mastery_components": "ALTER TABLE knowledge_mastery ADD COLUMN mastery_components TEXT",
+                "priority_components": "ALTER TABLE knowledge_mastery ADD COLUMN priority_components TEXT",
+            }
+            for column, statement in migrations.items():
+                if column not in columns:
+                    conn.execute(statement)
+            row = conn.execute(
+                "SELECT knowledge_mastery_id FROM knowledge_mastery WHERE student_id = ? AND knowledge_id = ?",
+                (str(state.student_id), state.knowledge_point_id),
+            ).fetchone()
+            mastery_id = row["knowledge_mastery_id"] if row else self.new_id("KM")
+            conn.execute(
+                """INSERT INTO knowledge_mastery
+                   (knowledge_mastery_id, student_id, knowledge_id, mastery_status, correct_count,
+                    wrong_count, master_level, priority, formula_version, mastery_components,
+                    priority_components, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(knowledge_mastery_id) DO UPDATE SET
+                    mastery_status=excluded.mastery_status, correct_count=excluded.correct_count,
+                    wrong_count=excluded.wrong_count, master_level=excluded.master_level,
+                    priority=excluded.priority, formula_version=excluded.formula_version,
+                    mastery_components=excluded.mastery_components,
+                    priority_components=excluded.priority_components, updated_at=excluded.updated_at""",
+                (
+                    mastery_id, str(state.student_id), state.knowledge_point_id, mastery_status,
+                    state.correct_count, state.wrong_count, result.mastery.mastery / 100,
+                    result.priority, result.formula_version, result.mastery.model_dump_json(),
+                    result.components.model_dump_json(), result.calculated_at.isoformat(),
+                ),
+            )
+            conn.commit()
+        return mastery_id
 
     def get_knowledge_states(self, student_id: str) -> list[KnowledgeStateInput]:
         """P0-3: 从 answer_history (SQLite) 读取真实答题数据 → 聚合为 KnowledgeStateInput。
@@ -129,7 +176,15 @@ class Neo4jRepository:
                         break
                     wrong_streak += 1
 
-            # evidence 暂不构建（历史数据无 error_severity），priority_calculator 可处理空列表
+            evidence = [
+                PracticeEvidence(
+                    is_correct=record["is_correct"],
+                    occurred_at=datetime.fromisoformat(record["submitted_at"]),
+                    error_severity=record.get("error_severity"),
+                )
+                for record in records
+                if record.get("submitted_at")
+            ]
             states.append(KnowledgeStateInput(
                 student_id=student_id,
                 knowledge_point_id=kid,
@@ -137,7 +192,7 @@ class Neo4jRepository:
                 wrong_count=wrong_count,
                 correct_streak=correct_streak,
                 wrong_streak=wrong_streak,
-                evidence=[],
+                evidence=evidence,
                 importance=50.0,
                 state_version=1,
             ))
@@ -145,17 +200,35 @@ class Neo4jRepository:
         return states
 
     def _query_answer_history(self, student_id: str) -> list[dict]:
-        """从 answer_history 读取学生所有答题记录，并补齐 knowledge_id。"""
+        """读取主链作答、复习作答与订正记录，并补齐 knowledge_id。"""
         with _get_review_db() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                """SELECT ah.question_id, ah.is_correct, ah.submitted_at
+                """SELECT ah.question_id, ah.is_correct, ah.submitted_at, ah.error_tags
                    FROM answer_history ah
                    WHERE ah.student_id = ?
                    ORDER BY ah.submitted_at""",
                 (student_id,),
             )
             rows = [dict(r) for r in cursor.fetchall()]
+            try:
+                cursor.execute(
+                    """SELECT ra.question_id, ra.is_correct, ra.submitted_at, ra.error_tags
+                       FROM review2_attempt ra
+                       JOIN review2_session rs ON rs.id = ra.session_id
+                       WHERE rs.student_id = ?
+                       UNION ALL
+                       SELECT ra.question_id, ra.correction_is_correct, ra.correction_at,
+                              ra.correction_error_tags
+                       FROM review2_attempt ra
+                       JOIN review2_session rs ON rs.id = ra.session_id
+                       WHERE rs.student_id = ? AND ra.correction_at IS NOT NULL""",
+                    (student_id, student_id),
+                )
+                rows.extend(dict(row) for row in cursor.fetchall())
+            except sqlite3.OperationalError:
+                # 兼容尚未初始化 review2_ 表的旧数据库和最小化单元测试库。
+                pass
 
         if not rows:
             return []
@@ -199,10 +272,19 @@ class Neo4jRepository:
         for row in rows:
             kid = kid_map.get(row["question_id"])
             if kid:
+                error_severity = None
+                if not bool(row["is_correct"]) and row.get("error_tags"):
+                    try:
+                        tags = json.loads(row["error_tags"])
+                        severities = [ERROR_SEVERITY_BY_LEVEL1.get(tag.get("level1"), 0.5) for tag in tags if isinstance(tag, dict)]
+                        error_severity = max(severities, default=0.5)
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        error_severity = 0.5
                 result.append({
                     "knowledge_id": kid,
                     "is_correct": bool(row["is_correct"]),
                     "submitted_at": row["submitted_at"],
+                    "error_severity": error_severity,
                 })
 
         return result

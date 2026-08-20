@@ -4,6 +4,7 @@ import requests
 
 from backend.services.review_service.review.domain.enums import AnalysisStatus, ItemStatus, PlanStatus
 from backend.services.review_service.review.repositories import AttemptRecord, Neo4jRepository, SessionRecord
+from backend.services.review_service.review.schemas.priority import MasteryUpdateRequest
 from backend.services.review_service.review.schemas.review import (
     AttemptResponse,
     CorrectionRequest,
@@ -315,6 +316,10 @@ class SessionService:
             attempt.correction_selected_option or 0, correction_error_tags,
         )
 
+        self._refresh_mastery_after_correction(
+            session.student_id, question, bool(attempt.correction_is_correct)
+        )
+
         # 答案揭示由老师批次放行控制，不由学生订正对错决定
         batch_released = self._is_answer_released(question.id)
         return CorrectionResponse(
@@ -329,6 +334,18 @@ class SessionService:
             judge_method=correction_judge_method,
             recorded_at=attempt.correction_at,
         )
+
+    def _refresh_mastery_after_correction(self, student_id: str, question, is_correct: bool) -> None:
+        """Apply persisted correction evidence to every knowledge point on the question."""
+        for knowledge in question.knowledge:
+            try:
+                self.plan_service.priority_service.update_mastery(MasteryUpdateRequest(
+                    student_id=student_id,
+                    knowledge_id=knowledge.knowledge_point_id,
+                    is_correct=is_correct,
+                ))
+            except Exception as error:
+                print(f"[review] 订正后掌握度刷新失败 ({knowledge.knowledge_point_id}): {error}")
 
     def _get(self, session_id: str) -> SessionRecord:
         session = self.repository.get_session(session_id)
