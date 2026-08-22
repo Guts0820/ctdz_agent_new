@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from backend.services.review_service.review.dependencies import plan_service
 from backend.services.review_service.review.schemas.review import CreateReviewPlanRequest, ReviewPlan, UpdatePlanCapacityRequest
@@ -9,7 +9,10 @@ router = APIRouter(prefix="/review-plans", tags=["Review Plans"])
 
 @router.post("", response_model=ReviewPlan)
 def create_review_plan(request: CreateReviewPlanRequest) -> ReviewPlan:
-    return plan_service.create(request)
+    try:
+        return plan_service.create(request)
+    except (LookupError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @router.get("/{plan_id}", response_model=ReviewPlan)

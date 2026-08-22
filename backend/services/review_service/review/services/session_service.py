@@ -144,6 +144,7 @@ class SessionService:
                     "question_id": question.id,
                     "original_question": question.prompt,
                     "student_write": student_answer,
+                    "standard_answer": question.answer,
                     "standard_solve_steps": standard_steps,
                     "text_status": "normal",
                 },

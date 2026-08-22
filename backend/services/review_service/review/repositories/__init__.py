@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from uuid import uuid4
 
+from backend.shared.config import DATABASE_PATH
 from backend.shared.neo4j_connection import neo4j_conn
 from backend.services.review_service.review.domain.enums import AnalysisStatus, Difficulty, ItemStatus, PlanMode, PlanStatus
 from backend.services.review_service.review.integrations.neo4j_contracts import Neo4jKnowledgeGraphClient
@@ -15,7 +16,7 @@ from backend.services.review_service.review.schemas.review import (
     ReviewPlanItem,
 )
 
-REVIEW_DATABASE = "database/sqlite/example_db.db"
+REVIEW_DATABASE = DATABASE_PATH
 
 
 def _get_review_db():
@@ -577,6 +578,76 @@ class Neo4jRepository:
 
     # ==================== 其他方法 ====================
 
+    def _get_sqlite_questions(self) -> list[QuestionInternal]:
+        """Load the canonical local question bank, including pending OCR questions."""
+        try:
+            with _get_review_db() as conn:
+                rows = conn.execute(
+                    """SELECT q.question_id, q.question_description, q.question_type,
+                              q.difficulty, q.standard_solve_steps, q.answer,
+                              qkm.knowledge_id, qkm.mapping_weight
+                       FROM question q
+                       LEFT JOIN question_knowledge_mapping qkm
+                         ON qkm.question_id = q.question_id
+                       ORDER BY q.question_id"""
+                ).fetchall()
+        except sqlite3.OperationalError as error:
+            print(f"Error querying questions from SQLite: {error}")
+            return []
+
+        question_map: dict[str, dict] = {}
+        for row in rows:
+            question_id = str(row["question_id"] or "").strip()
+            prompt = str(row["question_description"] or "").strip()
+            answer = str(row["answer"] or "").strip()
+            if not question_id or not prompt or not answer:
+                continue
+
+            if question_id not in question_map:
+                difficulty_raw = str(row["difficulty"] or "").strip().lower()
+                if difficulty_raw in {"advanced", "hard", "困难"}:
+                    difficulty = Difficulty.ADVANCED
+                elif difficulty_raw in {"practice", "medium", "中等"}:
+                    difficulty = Difficulty.PRACTICE
+                else:
+                    difficulty = Difficulty.BASIC
+                steps_raw = str(row["standard_solve_steps"] or "").strip()
+                question_map[question_id] = {
+                    "id": question_id,
+                    "prompt": prompt,
+                    "question_type": "open",
+                    "options": [],
+                    "correct_option": 0,
+                    "answer": answer,
+                    "answer_steps": [line.strip() for line in steps_raw.splitlines() if line.strip()],
+                    "knowledge": [],
+                    "difficulty": difficulty,
+                    "estimated_minutes": 2,
+                    "enabled": True,
+                    "source_type": "sqlite",
+                }
+
+            knowledge_id = str(row["knowledge_id"] or "").strip()
+            if knowledge_id:
+                weight = float(row["mapping_weight"] or 1.0)
+                question_map[question_id]["knowledge"].append({
+                    "knowledge_point_id": knowledge_id,
+                    "weight": min(max(weight, 0.01), 1.0),
+                })
+
+        questions = []
+        for question_data in question_map.values():
+            if not question_data["knowledge"]:
+                question_data["knowledge"] = [{
+                    "knowledge_point_id": "unknown",
+                    "weight": 1.0,
+                }]
+            try:
+                questions.append(QuestionInternal(**question_data))
+            except Exception as error:
+                print(f"Error creating SQLite QuestionInternal for {question_data['id']}: {error}")
+        return questions
+
     def get_questions(self) -> list[QuestionInternal]:
         cache_ttl = 300
         now = self.now()
@@ -688,13 +759,22 @@ class Neo4jRepository:
                 except Exception as e:
                     print(f"Error creating QuestionInternal for {qid}: {e}")
 
+            local_questions = self._get_sqlite_questions()
+            known_ids = {question.id for question in questions}
+            questions.extend(question for question in local_questions if question.id not in known_ids)
+            if not questions:
+                questions = self._get_fallback_questions()
+
             self._questions_cache = questions
             self._questions_cache_time = now
             return questions
 
         except Exception as e:
             print(f"Error querying questions from Neo4j: {e}")
-            return self._get_fallback_questions()
+            questions = self._get_sqlite_questions() or self._get_fallback_questions()
+            self._questions_cache = questions
+            self._questions_cache_time = now
+            return questions
 
     def _get_fallback_questions(self) -> list[QuestionInternal]:
         fallback_data = [

@@ -3,6 +3,7 @@ from datetime import date, datetime
 from types import SimpleNamespace
 
 from backend.services.review_service.review.repositories import Neo4jRepository
+from backend.services.review_service.review.domain.enums import Difficulty
 from backend.services.review_service.review.schemas.priority import KnowledgeStateInput, MasteryUpdateRequest, PracticeEvidence
 from backend.services.review_service.review.services.priority_calculator import PriorityCalculator
 from backend.services.review_service.review.services.priority_service import PriorityService
@@ -69,6 +70,40 @@ def test_correction_evidence_works_without_answer_history(tmp_path, monkeypatch)
     assert len(states) == 1
     assert [item.is_correct for item in states[0].evidence] == [False, True]
     assert states[0].evidence[0].error_severity == 0.6
+
+
+def test_question_bank_uses_sqlite_when_neo4j_is_empty(tmp_path, monkeypatch):
+    database = tmp_path / "questions.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE question (
+                question_id TEXT, question_description TEXT, question_type TEXT,
+                difficulty TEXT, standard_solve_steps TEXT, answer TEXT
+            );
+            CREATE TABLE question_knowledge_mapping (
+                question_id TEXT, knowledge_id TEXT, mapping_weight REAL
+            );
+            INSERT INTO question VALUES (
+                'Q1', '25+38等于多少？', '计算题', 'medium', '25+38=63', '63'
+            );
+            INSERT INTO question_knowledge_mapping VALUES ('Q1', 'K1', 1.0);
+            """
+        )
+    monkeypatch.setattr("backend.services.review_service.review.repositories.REVIEW_DATABASE", str(database))
+    monkeypatch.setattr(
+        "backend.services.review_service.review.repositories.neo4j_conn.query",
+        lambda *_args, **_kwargs: [],
+    )
+
+    questions = Neo4jRepository().get_questions()
+
+    assert len(questions) == 1
+    assert questions[0].id == "Q1"
+    assert questions[0].answer == "63"
+    assert questions[0].difficulty == Difficulty.PRACTICE
+    assert questions[0].knowledge[0].knowledge_point_id == "K1"
+    assert questions[0].source_type == "sqlite"
 
 
 class FakeRepository:
