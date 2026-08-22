@@ -2,11 +2,15 @@ import subprocess
 import sys
 import time
 import os
+import socket
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BACKEND_DIR.parent
+load_dotenv(BACKEND_DIR / ".env")
 
 
 def project_path(path: str | Path) -> Path:
@@ -23,6 +27,67 @@ def build_service_environment(port):
     )
     env["API_PORT"] = str(port)
     return env
+
+
+def is_port_listening(port: int, timeout: float = 0.5) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def start_neo4j() -> subprocess.Popen | None:
+    """Start the local Neo4j dependency before the graph API on Windows."""
+    if is_port_listening(7687):
+        print("Neo4j already running on port 7687.")
+        return None
+    if os.name != "nt":
+        raise RuntimeError("Neo4j is not listening on port 7687; start it before the backend.")
+
+    neo4j_home = Path(os.getenv("NEO4J_HOME", r"D:\Neo4j\server\neo4j-community-5.26.6"))
+    launcher = neo4j_home / "bin" / "neo4j.bat"
+    if not launcher.exists():
+        raise RuntimeError(f"Neo4j launcher not found: {launcher}")
+
+    env = os.environ.copy()
+    java_home = Path(env.get("JAVA_HOME", ""))
+    if not (java_home / "bin" / "java.exe").exists():
+        candidates = [
+            Path(r"C:\Program Files\Java\jdk-24"),
+            *Path(r"C:\Program Files\Eclipse Adoptium").glob("jdk-*"),
+            *Path(r"D:\Java").glob("jdk-*"),
+        ]
+        java_home = next((path for path in candidates if (path / "bin" / "java.exe").exists()), Path())
+    if not java_home or not (java_home / "bin" / "java.exe").exists():
+        raise RuntimeError("A Java runtime for Neo4j was not found.")
+    env["JAVA_HOME"] = str(java_home)
+    env["PATH"] = os.pathsep.join((str(java_home / "bin"), env.get("PATH", "")))
+
+    log_path = project_path("backend/logs/Neo4j.log")
+    log_file = open(log_path, "w", encoding="utf-8")
+    try:
+        process = subprocess.Popen(
+            ["cmd.exe", "/c", str(launcher), "console"],
+            cwd=str(neo4j_home),
+            env=env,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    finally:
+        log_file.close()
+
+    deadline = time.time() + 45
+    while time.time() < deadline:
+        if process.poll() is not None:
+            raise RuntimeError(f"Neo4j exited during startup; see {log_path}")
+        if is_port_listening(7687):
+            print(f"Neo4j ready. Log: {log_path}")
+            return process
+        time.sleep(1)
+    process.terminate()
+    raise RuntimeError(f"Neo4j did not become ready within 45 seconds; see {log_path}")
 
 
 def start_service(name, script_path, port, log_dir="backend/logs"):
@@ -65,6 +130,9 @@ def main():
     processes = []
     
     try:
+        neo4j_process = start_neo4j()
+        if neo4j_process is not None:
+            processes.append(("Neo4j", neo4j_process))
         print("Initializing database...")
         subprocess.run(
             [sys.executable, str(project_path("backend/tools/init_sqlite_database.py"))],

@@ -5,9 +5,9 @@ const test = require('node:test');
 
 const { OcrUploadPolicy } = require('../js/ocr-upload-policy.js');
 
-test('only allows OCR results at or above the 0.95 confidence threshold', () => {
-    assert.equal(OcrUploadPolicy.isAccepted(0.95), true);
-    assert.equal(OcrUploadPolicy.isAccepted(0.949), false);
+test('only allows OCR results at or above the 0.80 confidence threshold', () => {
+    assert.equal(OcrUploadPolicy.isAccepted(0.80), true);
+    assert.equal(OcrUploadPolicy.isAccepted(0.799), false);
 });
 
 test('allows at most three reuploads after a low-confidence initial upload', () => {

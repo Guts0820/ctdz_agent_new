@@ -87,13 +87,8 @@ def prepare_judging_input(request: SubmitRequest) -> dict[str, Any]:
         except (TypeError, ValueError):
             confidence = 0.0
         analysis_input = ocr_data.get("analysis_input")
-        if (
-            ocr_data.get("status") == "low_confidence"
-            or confidence < OCR_MIN_CONFIDENCE
-            or not isinstance(analysis_input, dict)
-            or bool(analysis_input.get("review_required"))
-        ):
-            raise HTTPException(status_code=422, detail="照片模糊，请重新上传")
+        if not isinstance(analysis_input, dict):
+            raise HTTPException(status_code=422, detail="OCR 未返回结构化识别结果，请重新上传清晰、完整的照片")
         question = analysis_input.get("question")
         student = analysis_input.get("student_answer")
         if not isinstance(question, dict) or not isinstance(student, dict):
@@ -101,7 +96,17 @@ def prepare_judging_input(request: SubmitRequest) -> dict[str, Any]:
         question_text = str(question.get("text", "") or "").strip()
         student_answer = str(student.get("text", "") or "").strip()
         if not question_text:
-            raise HTTPException(status_code=422, detail="OCR 未识别到可靠题干，无法匹配标准答案")
+            raise HTTPException(status_code=422, detail="未能可靠识别题目，请确保题干完整入镜且没有被手写内容遮挡")
+        if not student_answer:
+            raise HTTPException(status_code=422, detail="未能可靠识别学生最终作答，请确保答案清晰且未被涂改遮挡")
+        if bool(analysis_input.get("review_required")):
+            raise HTTPException(status_code=422, detail="OCR 结果需要人工确认，请重新拍摄题目和最终作答边界更清楚的照片")
+        if ocr_data.get("status") == "low_confidence" or confidence < OCR_MIN_CONFIDENCE:
+            confidence_percent = round(confidence * 100)
+            raise HTTPException(
+                status_code=422,
+                detail=f"OCR 识别置信度不足（{confidence_percent}%），请重新上传清晰、完整的照片",
+            )
     if not question_text:
         raise HTTPException(status_code=422, detail="判题需要题干或有效的 OCR 图片")
     graph_question = fetch_question(request.question_id) if request.question_id else None
@@ -172,6 +177,19 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
             raise HTTPException(status_code=422, detail="判题服务未返回匹配到的知识图谱题目")
         knowledge_id = analysis.get("knowledge_id") or prepared["knowledge_id"] or _lookup_knowledge_id(question_id)
         if analysis["judge_result"] == "correct":
+            if request.image and analysis.get("question_pending_review"):
+                return SubmitResponse(status="success", data={
+                    "judge_result": "correct",
+                    "step_feedback": analysis["step_feedback"],
+                    "original_question": analysis["original_question"],
+                    "student_write": analysis["student_write"],
+                    "question_id": question_id,
+                    "question_source": analysis.get("question_source"),
+                    "question_pending_review": True,
+                    "answer_released": False,
+                    "next_action": "teacher_review",
+                    **ocr_data,
+                })
             if not knowledge_id:
                 return SubmitResponse(status="success", data={"judge_result": "correct", "step_feedback": analysis["step_feedback"], "master_level": 1.0, "next_action": "guide", "warning": "无法确定题目对应的知识点，跳过状态更新", **ocr_data})
             state = execute_downstream("学习状态服务", lambda: update_state(request.student_id, knowledge_id, True, analysis["confidence"], analysis.get("answer_history_id")))
@@ -181,15 +199,8 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
                 review = execute_downstream("复习计划服务", lambda: generate_review(request.student_id, knowledge_id, state["knowledge_mastery_id"], state["master_level"]))
                 review = require_fields("复习计划服务", review, {"review_plan_id", "status"})
             return SubmitResponse(status="success", data={"judge_result": "correct", "step_feedback": analysis["step_feedback"], "knowledge_id": knowledge_id, "master_level": state["master_level"], "mastery": state.get("mastery"), "priority": state.get("priority"), "next_action": state["next_action"], "review_plan": review, **ocr_data})
-        error_analysis = execute_downstream("错因分析服务", lambda: analyze_error(_build_error_analysis_payload(analysis)))
-        error_analysis = require_fields(
-            "错因分析服务",
-            error_analysis,
-            {"error_tags", "knowledge_id", "knowledge_scope", "reasoning_content", "total_confidence", "low_confidence", "fallback_used"},
-        )
-        knowledge_id = error_analysis.get("knowledge_id") or knowledge_id
         if request.image and analysis.get("question_pending_review"):
-            mistake_case_id = error_analysis.get("mistake_case_id") or _ensure_mistake_case(
+            mistake_case_id = _ensure_mistake_case(
                 request.student_id,
                 question_id,
                 analysis.get("answer_history_id"),
@@ -212,6 +223,13 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
                     **ocr_data,
                 },
             )
+        error_analysis = execute_downstream("错因分析服务", lambda: analyze_error(_build_error_analysis_payload(analysis)))
+        error_analysis = require_fields(
+            "错因分析服务",
+            error_analysis,
+            {"error_tags", "knowledge_id", "knowledge_scope", "reasoning_content", "total_confidence", "low_confidence", "fallback_used"},
+        )
+        knowledge_id = error_analysis.get("knowledge_id") or knowledge_id
         if not knowledge_id:
             if not analysis.get("question_pending_review"):
                 raise HTTPException(status_code=422, detail="错因分析未能确定知识点，无法继续生成教学内容")

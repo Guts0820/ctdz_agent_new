@@ -1,5 +1,5 @@
 const OcrUploadPolicy = (() => {
-    const MINIMUM_CONFIDENCE = 0.95;
+    const MINIMUM_CONFIDENCE = 0.80;
     const MAX_REUPLOADS = 3;
 
     function startRound() {

@@ -120,3 +120,37 @@ def test_correct_answer_skips_error_knowledge_and_teaching(monkeypatch):
     assert response.data["mastery"] == 30.0
     assert response.data["priority"] == 72.5
     assert response.data["review_plan"]["review_plan_id"] == "RP001"
+
+
+def test_pending_image_wrong_answer_enters_mistake_book_without_error_analysis(monkeypatch):
+    monkeypatch.setattr(
+        gateway,
+        "prepare_judging_input",
+        lambda _request: {
+            "question_id": None,
+            "knowledge_id": None,
+            "ocr_data": {"status": "success", "analysis_input": {}},
+            "analysis_request": {},
+        },
+    )
+    monkeypatch.setattr(
+        gateway,
+        "analyze_submission",
+        lambda _payload: {
+            **analysis_result("wrong"),
+            "question_id": "TQLOCAL",
+            "knowledge_id": None,
+            "question_source": "llm_new_question_local",
+            "question_pending_review": True,
+        },
+    )
+    monkeypatch.setattr(gateway, "analyze_error", lambda _payload: pytest.fail("不应调用错因分析"))
+    monkeypatch.setattr(gateway, "_ensure_mistake_case", lambda *_args: "MC-LOCAL")
+
+    response = gateway.process_submission(
+        SubmitRequest(student_id="S001", image="data:image/png;base64,aW1hZ2U=")
+    )
+
+    assert response.status == "success"
+    assert response.data["mistake_case_id"] == "MC-LOCAL"
+    assert response.data["answer_released"] is False

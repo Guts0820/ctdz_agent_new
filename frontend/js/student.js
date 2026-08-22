@@ -570,7 +570,7 @@ const StudentPage = {
                 '<div class="flex items-start gap-3">' +
                     '<span class="text-2xl" aria-hidden="true">⚠️</span>' +
                     '<div><h2 id="ocr-confidence-title" class="font-bold text-lg text-gray-900">照片模糊，请重新上传</h2>' +
-                    '<p class="text-sm text-gray-600 mt-1">识别置信度为 ' + confidencePct + '%，未达到 95% 的判题要求。</p></div>' +
+                    '<p class="text-sm text-gray-600 mt-1">识别置信度为 ' + confidencePct + '%，未达到 80% 的判题要求。</p></div>' +
                 '</div>' +
                 '<p class="text-sm text-gray-500">' + limitHint + '</p>' +
                 action +

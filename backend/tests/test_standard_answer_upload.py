@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
+
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,6 +49,21 @@ def test_single_question_ocr_result_is_accepted_for_standard_answer_upload() -> 
     assert build_graph_items(payload) == [
         {"text": "Q0088题干", "explanation": "按图判断。", "answer": "2，1，3"}
     ]
+
+
+def test_teacher_standard_answer_keeps_the_stricter_095_threshold() -> None:
+    from backend.services.teacher_service.standard_answer_service import build_graph_items
+
+    with pytest.raises(HTTPException, match="置信度不足"):
+        build_graph_items({
+            "analysis_input": {
+                "schema_version": "1.0",
+                "question": {"text": "1+1=", "explanation": "计算", "visual_context": []},
+                "student_answer": {"text": "2"},
+                "confidence": 0.94,
+                "review_required": False,
+            }
+        })
 
 
 def test_gateway_exposes_public_standard_answer_upload_route() -> None:

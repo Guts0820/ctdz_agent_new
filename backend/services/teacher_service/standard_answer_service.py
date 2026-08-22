@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from backend.shared.config import (
     KNOWLEDGE_GRAPH_URL,
-    OCR_MIN_CONFIDENCE,
+    STANDARD_ANSWER_OCR_MIN_CONFIDENCE,
     OCR_SERVICE_URL,
     OCR_TIMEOUT_SECONDS,
 )
@@ -19,7 +19,7 @@ def build_graph_items(ocr_payload: dict[str, Any]) -> list[dict[str, str]]:
 
     confidence = float(analysis_input.get("confidence", ocr_payload.get("confidence", 0)))
     review_required = bool(analysis_input.get("review_required", ocr_payload.get("review_required", False)))
-    if review_required or confidence < OCR_MIN_CONFIDENCE:
+    if review_required or confidence < STANDARD_ANSWER_OCR_MIN_CONFIDENCE:
         raise HTTPException(status_code=422, detail="标准答案图片识别置信度不足，请重新上传。")
 
     raw_questions = analysis_input.get("questions")

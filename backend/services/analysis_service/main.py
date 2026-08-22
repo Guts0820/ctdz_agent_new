@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import unicodedata
 import ast
+import hashlib
 import operator
 import re
 from datetime import datetime
@@ -231,6 +232,28 @@ def _upsert_unseen_question(question: str, answer: str, steps: str) -> dict:
     return questions[0]
 
 
+def _upsert_unseen_question_locally(question: str, answer: str, steps: str) -> dict:
+    """Persist a pending question when Neo4j is temporarily unavailable."""
+    question_id = f"TQ{hashlib.sha256(question.encode('utf-8')).hexdigest()[:12].upper()}"
+    with get_db() as connection:
+        existing = connection.execute(
+            "SELECT question_id FROM question WHERE question_description = ? LIMIT 1",
+            (question,),
+        ).fetchone()
+        if existing:
+            question_id = str(existing["question_id"])
+        else:
+            connection.execute(
+                """INSERT INTO question (
+                    question_id, question_description, question_type, difficulty,
+                    standard_solve_steps, answer
+                ) VALUES (?, ?, '待审核', 'unknown', ?, ?)""",
+                (question_id, question, steps, answer),
+            )
+            connection.commit()
+    return {"id": question_id, "knowledge_id": None}
+
+
 @app.post("/internal/api/v1/analysis/process", response_model=AnalysisResponse)
 @timed("analysis.process")
 def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
@@ -246,10 +269,12 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
     standard_answer = (request.standard_answer or "").strip()
     standard_solve_steps = request.standard_solve_steps
     if not standard_answer:
+        graph_available = True
         try:
             match = resolve_question_reference(request.original_question)
-        except Exception as error:
-            raise HTTPException(status_code=503, detail=f"知识图谱检索服务暂不可用：{error}") from error
+        except Exception:
+            graph_available = False
+            match = None
         if match is None:
             try:
                 unseen = judge_unseen_question_with_llm(
@@ -274,18 +299,30 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
                 source = "llm_new_question"
             standard_answer = unseen["standard_answer"].strip()
             standard_solve_steps = unseen.get("standard_solve_steps") or ""
-            try:
-                matched_question = _upsert_unseen_question(
+            if graph_available:
+                try:
+                    matched_question = _upsert_unseen_question(
+                        request.original_question,
+                        standard_answer,
+                        standard_solve_steps,
+                    )
+                except Exception:
+                    graph_available = False
+            if not graph_available:
+                matched_question = _upsert_unseen_question_locally(
                     request.original_question,
                     standard_answer,
                     standard_solve_steps,
                 )
-            except Exception as error:
-                raise HTTPException(status_code=503, detail=f"新题写入题库失败：{error}") from error
+                source = f"{source}_local"
             question_id = str(matched_question.get("id") or "").strip() or None
             knowledge_id = matched_question.get("knowledge_id")
             question_match_confidence = unseen.get("confidence")
-            question_match_reason = "题库未命中，由 LLM 解题后创建待审核题目。"
+            question_match_reason = (
+                "知识图谱暂不可用，判题后已暂存本地待审核题库。"
+                if not graph_available
+                else "题库未命中，由 LLM 解题后创建待审核题目。"
+            )
         else:
             matched_question = match["question"]
             question_id = match["question_id"]
@@ -356,7 +393,7 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
             "standard_answer": standard_answer,
             "standard_solve_steps": standard_solve_steps,
             "question_source": source,
-            "question_pending_review": source in {"llm_new_question", "rule_new_question"},
+            "question_pending_review": source.startswith(("llm_new_question", "rule_new_question")),
         }
     )
     return AnalysisResponse(**process_result)
