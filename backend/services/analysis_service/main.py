@@ -1,12 +1,18 @@
 """Text-only judging service backed by knowledge-graph standard answers."""
 
 import json
+import os
 import sqlite3
 import sys
 import unicodedata
+import ast
+import operator
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+
+import requests
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -20,8 +26,13 @@ sys.path.insert(0, str(REPOSITORY_ROOT))
 from backend.shared.config import DATABASE_PATH
 from backend.shared.observability import log_event, timed
 from backend.shared.id_utils import generate_id
-from backend.services.analysis_service.llm_judge import LlmJudgeResult, judge_with_llm
+from backend.services.analysis_service.llm_judge import (
+    LlmJudgeResult,
+    judge_unseen_question_with_llm,
+    judge_with_llm,
+)
 from backend.services.analysis_service.question_retrieval import resolve_question_reference
+from backend.shared.config import KNOWLEDGE_GRAPH_URL, HTTP_TIMEOUT_SECONDS
 
 
 app = FastAPI(title="Judging Service", version="1.0.0")
@@ -59,6 +70,10 @@ class AnalysisResponse(BaseModel):
     ocr_fallback_used: Optional[bool] = None
     ocr_status: Optional[str] = None
     ocr_analysis_input: Optional[dict] = None
+    standard_answer: Optional[str] = None
+    standard_solve_steps: Optional[str] = None
+    question_source: Optional[str] = None
+    question_pending_review: bool = False
 
 
 def get_db() -> sqlite3.Connection:
@@ -72,6 +87,60 @@ def normalize_answer(answer: str) -> str:
     normalized = unicodedata.normalize("NFKC", answer).strip()
     normalized = normalized.replace("×", "*").replace("÷", "/")
     return "".join(normalized.split())
+
+
+_ARITHMETIC_OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+}
+
+
+def _evaluate_arithmetic_expression(expression: str) -> float:
+    node = ast.parse(expression, mode="eval").body
+
+    def evaluate(current: ast.AST) -> float:
+        if isinstance(current, ast.Constant) and isinstance(current.value, (int, float)):
+            return float(current.value)
+        if isinstance(current, ast.UnaryOp) and isinstance(current.op, ast.USub):
+            return -evaluate(current.operand)
+        if isinstance(current, ast.BinOp) and type(current.op) in _ARITHMETIC_OPERATORS:
+            return _ARITHMETIC_OPERATORS[type(current.op)](evaluate(current.left), evaluate(current.right))
+        raise ValueError("unsupported arithmetic expression")
+
+    return evaluate(node)
+
+
+def _judge_simple_arithmetic(question: str, student_answer: str) -> Optional[dict]:
+    """Local fallback for an OCR stem that is only a numeric expression."""
+    normalized = unicodedata.normalize("NFKC", question).replace("×", "*").replace("÷", "/")
+    match = re.search(r"(?<![\d.])[-+()\d.*/]+(?:\s*=\s*[-+()\d.*/]+)?", normalized)
+    if not match:
+        return None
+    expression = match.group(0).split("=", 1)[0].strip()
+    if not expression or not re.fullmatch(r"[-+()\d.*/\s]+", expression):
+        return None
+    try:
+        result = _evaluate_arithmetic_expression(expression)
+    except (SyntaxError, ValueError, ZeroDivisionError):
+        return None
+    standard_answer = str(int(result)) if result.is_integer() else format(result, ".12g")
+    student_normalized = normalize_answer(student_answer)
+    try:
+        is_correct = abs(float(student_normalized) - result) < 1e-9
+    except ValueError:
+        is_correct = student_normalized == standard_answer
+    return {
+        "standard_answer": standard_answer,
+        "standard_solve_steps": f"计算 {expression} = {standard_answer}。",
+        "judge_result": "correct" if is_correct else "wrong",
+        "step_feedback": "回答正确。" if is_correct else "计算结果与正确答案不一致。",
+        "error_step_list": [] if is_correct else ["计算结果不一致"],
+        "miss_step_list": [],
+        "core_error_type": "" if is_correct else "计算结果错误",
+        "confidence": 1.0,
+    }
 
 
 def _rule_based_judgment(
@@ -148,6 +217,20 @@ def judge_against_standard_answer(
     return llm_result
 
 
+def _upsert_unseen_question(question: str, answer: str, steps: str) -> dict:
+    response = requests.post(
+        f"{KNOWLEDGE_GRAPH_URL.rstrip('/')}/internal/api/questions/standard-answer",
+        json={"items": [{"text": question, "answer": answer, "explanation": steps}]},
+        timeout=HTTP_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    questions = payload.get("questions") if isinstance(payload, dict) else None
+    if not isinstance(questions, list) or not questions or not isinstance(questions[0], dict):
+        raise ValueError("题库写入接口返回格式错误")
+    return questions[0]
+
+
 @app.post("/internal/api/v1/analysis/process", response_model=AnalysisResponse)
 @timed("analysis.process")
 def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
@@ -168,16 +251,54 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
         except Exception as error:
             raise HTTPException(status_code=503, detail=f"知识图谱检索服务暂不可用：{error}") from error
         if match is None:
-            raise HTTPException(status_code=422, detail="未能可靠匹配知识图谱中的标准题目，无法判题")
-        matched_question = match["question"]
-        question_id = match["question_id"]
-        knowledge_id = match.get("knowledge_id")
-        question_match_confidence = match["match_confidence"]
-        question_match_reason = match["match_reason"]
-        standard_answer = str(matched_question.get("answer", "") or "").strip()
-        standard_solve_steps = matched_question.get("answer_steps")
+            try:
+                unseen = judge_unseen_question_with_llm(
+                    question=request.original_question,
+                    student_answer=request.student_write,
+                )
+            except Exception as error:
+                unseen = _judge_simple_arithmetic(request.original_question, request.student_write)
+                if unseen is not None:
+                    source = "rule_new_question"
+                else:
+                    if not os.getenv("ANALYSIS_LLM_API_KEY", "").strip():
+                        raise HTTPException(
+                            status_code=422,
+                            detail="未能可靠匹配知识图谱中的标准题目，且未配置 LLM 判题服务",
+                        ) from error
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"题库未收录，LLM 判题服务暂不可用：{error}",
+                    ) from error
+            else:
+                source = "llm_new_question"
+            standard_answer = unseen["standard_answer"].strip()
+            standard_solve_steps = unseen.get("standard_solve_steps") or ""
+            try:
+                matched_question = _upsert_unseen_question(
+                    request.original_question,
+                    standard_answer,
+                    standard_solve_steps,
+                )
+            except Exception as error:
+                raise HTTPException(status_code=503, detail=f"新题写入题库失败：{error}") from error
+            question_id = str(matched_question.get("id") or "").strip() or None
+            knowledge_id = matched_question.get("knowledge_id")
+            question_match_confidence = unseen.get("confidence")
+            question_match_reason = "题库未命中，由 LLM 解题后创建待审核题目。"
+        else:
+            matched_question = match["question"]
+            question_id = match["question_id"]
+            knowledge_id = match.get("knowledge_id")
+            question_match_confidence = match["match_confidence"]
+            question_match_reason = match["match_reason"]
+            standard_answer = str(matched_question.get("answer", "") or "").strip()
+            standard_solve_steps = matched_question.get("answer_steps")
+            source = "knowledge_graph"
         if not standard_answer:
             raise HTTPException(status_code=422, detail="知识图谱题目缺少标准答案，无法判题")
+    else:
+        source = "provided"
 
     process_result = judge_against_standard_answer(
         question=request.original_question,
@@ -232,6 +353,10 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
             "ocr_fallback_used": None,
             "ocr_status": None,
             "ocr_analysis_input": None,
+            "standard_answer": standard_answer,
+            "standard_solve_steps": standard_solve_steps,
+            "question_source": source,
+            "question_pending_review": source in {"llm_new_question", "rule_new_question"},
         }
     )
     return AnalysisResponse(**process_result)

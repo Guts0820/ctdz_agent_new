@@ -500,6 +500,9 @@ const StudentPage = {
 
     _showSubmissionResult(data, imageData) {
         const safe = this._escapeHtml.bind(this);
+        const recognizedQuestion = data.original_question || data.ocr?.analysis_input?.question?.text || '';
+        const recognizedAnswer = data.student_write || data.ocr?.analysis_input?.student_answer?.text || '';
+        const feedbackDeferred = data.answer_released === false || data.question_pending_review;
         const tags = Array.isArray(data.error_tags) && data.error_tags.length
             ? data.error_tags.map(function(tag) { return '<li><b>' + safe(tag.level3 || tag.error_id) + '</b>（' + safe(tag.level1) + ' / ' + safe(tag.level2) + '）</li>'; }).join('')
             : '<li>暂无可确认的具体错因</li>';
@@ -530,11 +533,13 @@ const StudentPage = {
             '<div class="sticky top-0 bg-white px-5 py-4 border-b flex items-center justify-between"><div class="font-bold text-lg">拍照判题结果</div><span class="px-2 py-1 rounded-full text-xs ' + statusClass + '">' + statusText + '</span></div>' +
             '<div class="p-5 space-y-4">' +
             (imageData ? '<img src="' + safe(imageData) + '" class="w-full max-h-40 object-contain bg-gray-100 rounded-xl" alt="提交的作业图片">' : '') +
-            '<div class="p-3 rounded-xl bg-gray-50"><div class="text-xs text-gray-500">错因标签</div><ul class="list-disc pl-5 mt-1 text-sm space-y-1">' + tags + '</ul></div>' +
+            '<div class="p-3 rounded-xl bg-gray-50"><div class="text-xs text-gray-500">识别题目</div><div class="text-sm mt-1 whitespace-pre-wrap">' + safe(recognizedQuestion || '未返回题干') + '</div><div class="text-xs text-gray-500 mt-3">识别作答</div><div class="text-sm mt-1 whitespace-pre-wrap">' + safe(recognizedAnswer || '未返回作答') + '</div></div>' +
+            (data.question_pending_review ? '<div class="text-sm text-amber-700 bg-amber-50 rounded-xl p-3">该题是新识别题目，已加入待审核题库；教师审核前不显示完整答案和错因。</div>' : '') +
+            (feedbackDeferred ? '' : '<div class="p-3 rounded-xl bg-gray-50"><div class="text-xs text-gray-500">错因标签</div><ul class="list-disc pl-5 mt-1 text-sm space-y-1">' + tags + '</ul></div>' +
             '<div class="p-3 rounded-xl bg-blue-50"><div class="text-xs text-gray-500">关联知识点</div><div class="font-medium mt-1">' + safe(data.knowledge_scope || data.knowledge_id || '未确定') + '</div><div class="text-sm mt-2">' + safe(data.knowledge_explanation || '暂无知识点讲解') + '</div></div>' +
             '<div class="p-3 rounded-xl bg-amber-50"><div class="text-xs text-gray-500">教学提示</div><ul class="list-disc pl-5 mt-1 text-sm space-y-1">' + hints + '</ul></div>' +
             '<div class="p-3 rounded-xl bg-purple-50"><div class="text-xs text-gray-500">引导讲解</div><div class="text-sm mt-1 whitespace-pre-wrap">' + safe(data.guided_explanation || data.explanation || '暂无引导讲解') + '</div><div class="text-xs text-gray-500 mt-3">完整讲解</div><div class="text-sm mt-1 whitespace-pre-wrap">' + answerExplanation + '</div></div>' +
-            '<div><div class="font-medium mb-2">变式练习 · ' + safe(data.teaching_mode || '') + '</div><div class="space-y-2">' + practices + '</div></div>' +
+            '<div><div class="font-medium mb-2">变式练习 · ' + safe(data.teaching_mode || '') + '</div><div class="space-y-2">' + practices + '</div></div>') +
             (data.review_plan ? '<div class="text-sm text-green-700 bg-green-50 rounded-xl p-3">已生成复习计划：' + safe(data.review_plan.review_plan_id || '') + '</div>' : '') +
             (data.fallback_used ? '<div class="text-xs text-gray-500">本次部分内容使用降级方案：' + safe(data.fallback_reason || '下游服务未提供完整结果') + '</div>' : '') +
             (wrong && data.mistake_case_id ? '<button type="button" class="w-full bg-red-500 text-white rounded-xl py-3 font-medium" onclick="StudentPage.doCorrection(\'' + safe(data.mistake_case_id) + '\')">立即订正</button>' : '') +

@@ -56,6 +56,25 @@ def _is_answer_released(question_id: str) -> bool:
         ).fetchone() is not None
 
 
+def _ensure_mistake_case(student_id: str, question_id: Optional[str], answer_history_id: Optional[str]) -> str:
+    """Keep an unmatched wrong answer in the mistake book without inventing a cause."""
+    from backend.shared.id_utils import generate_id
+
+    mistake_case_id = generate_id("MC")
+    with _get_db() as connection:
+        connection.execute(
+            "INSERT INTO mistake_case (mistake_case_id, student_id, question_id, current_status) VALUES (?, ?, ?, ?)",
+            (mistake_case_id, student_id, question_id, "correcting"),
+        )
+        if answer_history_id:
+            connection.execute(
+                "UPDATE answer_history SET mistake_case_id = ? WHERE answer_history_id = ?",
+                (mistake_case_id, answer_history_id),
+            )
+        connection.commit()
+    return mistake_case_id
+
+
 def prepare_judging_input(request: SubmitRequest) -> dict[str, Any]:
     """Build a text-only judging request from OCR and graph-owned answers."""
     ocr_data = None
@@ -169,8 +188,58 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
             {"error_tags", "knowledge_id", "knowledge_scope", "reasoning_content", "total_confidence", "low_confidence", "fallback_used"},
         )
         knowledge_id = error_analysis.get("knowledge_id") or knowledge_id
+        if request.image and analysis.get("question_pending_review"):
+            mistake_case_id = error_analysis.get("mistake_case_id") or _ensure_mistake_case(
+                request.student_id,
+                question_id,
+                analysis.get("answer_history_id"),
+            )
+            return SubmitResponse(
+                status="success",
+                data={
+                    "judge_result": analysis["judge_result"],
+                    "step_feedback": analysis["step_feedback"],
+                    "original_question": analysis["original_question"],
+                    "student_write": analysis["student_write"],
+                    "mistake_case_id": mistake_case_id,
+                    "question_id": question_id,
+                    "question_source": analysis.get("question_source"),
+                    "question_pending_review": True,
+                    "answer_released": False,
+                    "error_tags": [],
+                    "low_confidence": True,
+                    "next_action": "teacher_review",
+                    **ocr_data,
+                },
+            )
         if not knowledge_id:
-            raise HTTPException(status_code=422, detail="错因分析未能确定知识点，无法继续生成教学内容")
+            if not analysis.get("question_pending_review"):
+                raise HTTPException(status_code=422, detail="错因分析未能确定知识点，无法继续生成教学内容")
+            mistake_case_id = error_analysis.get("mistake_case_id") or _ensure_mistake_case(
+                request.student_id,
+                question_id,
+                analysis.get("answer_history_id"),
+            )
+            return SubmitResponse(
+                status="success",
+                data={
+                    "judge_result": analysis["judge_result"],
+                    "step_feedback": analysis["step_feedback"],
+                    "original_question": analysis["original_question"],
+                    "student_write": analysis["student_write"],
+                    "mistake_case_id": mistake_case_id,
+                    "question_id": question_id,
+                    "standard_answer": analysis.get("standard_answer"),
+                    "standard_solve_steps": analysis.get("standard_solve_steps"),
+                    "question_source": analysis.get("question_source"),
+                    "question_pending_review": analysis.get("question_pending_review", False),
+                    "answer_released": False,
+                    "error_tags": [],
+                    "low_confidence": True,
+                    "next_action": "teacher_review",
+                    **ocr_data,
+                },
+            )
         knowledge_payload = {
             "knowledge_id": knowledge_id,
             "knowledge_scope": error_analysis.get("knowledge_scope", ""),
@@ -199,12 +268,12 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
             review = execute_downstream("复习计划服务", lambda: generate_review(request.student_id, knowledge_id, state["knowledge_mastery_id"], state["master_level"]))
             review = require_fields("复习计划服务", review, {"review_plan_id", "status"})
         fallback_used = bool(error_analysis["fallback_used"] or teaching["fallback_used"])
-        response_data = {"judge_result": analysis["judge_result"], "step_feedback": analysis["step_feedback"], "error_step_list": analysis["error_step_list"], "miss_step_list": analysis["miss_step_list"], "is_copy": analysis["is_copy"], "core_error_type": analysis["core_error_type"], "confidence": analysis["confidence"], "error_tags": error_analysis["error_tags"], "reasoning_content": error_analysis["reasoning_content"], "total_confidence": error_analysis["total_confidence"], "low_confidence": error_analysis["low_confidence"], "mistake_case_id": error_analysis.get("mistake_case_id"), "knowledge_id": knowledge_id, "knowledge_scope": error_analysis["knowledge_scope"], "knowledge_explanation": knowledge["knowledge_explanation"], "difficulty": knowledge["difficulty"], "standard_solution": knowledge["standard_solution"], "common_errors": knowledge["common_errors"], "teaching_tips": knowledge["teaching_tips"], "explanation": teaching["explanation"], "guided_explanation": teaching.get("guided_explanation", ""), "final_answer_explanation": teaching.get("final_answer_explanation", ""), "hints": teaching["hints"], "practice_list": teaching["practice_list"], "teaching_mode": teaching["teaching_mode"], "fallback_used": fallback_used, "error_analysis_fallback_used": error_analysis["fallback_used"], "teaching_fallback_used": teaching["fallback_used"], "fallback_reason": teaching.get("fallback_reason"), "practice_fallback_reason": teaching.get("practice_fallback_reason"), "master_level": state["master_level"], "mastery": state.get("mastery"), "priority": state.get("priority"), "mastery_components": state.get("mastery_components"), "priority_components": state.get("components"), "formula_version": state.get("formula_version"), "next_action": state["next_action"], "correct_count": state["correct_count"], "wrong_count": state["wrong_count"], "mastery_status": state["mastery_status"], "review_plan": review, **ocr_data}
+        response_data = {"judge_result": analysis["judge_result"], "step_feedback": analysis["step_feedback"], "error_step_list": analysis["error_step_list"], "miss_step_list": analysis["miss_step_list"], "is_copy": analysis["is_copy"], "core_error_type": analysis["core_error_type"], "confidence": analysis["confidence"], "error_tags": error_analysis["error_tags"], "reasoning_content": error_analysis["reasoning_content"], "total_confidence": error_analysis["total_confidence"], "low_confidence": error_analysis["low_confidence"], "mistake_case_id": error_analysis.get("mistake_case_id"), "knowledge_id": knowledge_id, "knowledge_scope": error_analysis["knowledge_scope"], "knowledge_explanation": knowledge["knowledge_explanation"], "difficulty": knowledge["difficulty"], "standard_solution": knowledge["standard_solution"], "common_errors": knowledge["common_errors"], "teaching_tips": knowledge["teaching_tips"], "explanation": teaching["explanation"], "guided_explanation": teaching.get("guided_explanation", ""), "final_answer_explanation": teaching.get("final_answer_explanation", ""), "hints": teaching["hints"], "practice_list": teaching["practice_list"], "teaching_mode": teaching["teaching_mode"], "fallback_used": fallback_used, "error_analysis_fallback_used": error_analysis["fallback_used"], "teaching_fallback_used": teaching["fallback_used"], "fallback_reason": teaching.get("fallback_reason"), "practice_fallback_reason": teaching.get("practice_fallback_reason"), "master_level": state["master_level"], "mastery": state.get("mastery"), "priority": state.get("priority"), "mastery_components": state.get("mastery_components"), "priority_components": state.get("components"), "formula_version": state.get("formula_version"), "next_action": state["next_action"], "correct_count": state["correct_count"], "wrong_count": state["wrong_count"], "mastery_status": state["mastery_status"], "review_plan": review, "standard_answer": analysis.get("standard_answer"), "standard_solve_steps": analysis.get("standard_solve_steps"), "question_source": analysis.get("question_source"), "question_pending_review": analysis.get("question_pending_review", False), **ocr_data}
         response_data.update({
             "original_question": analysis["original_question"],
             "student_write": analysis["student_write"],
         })
-        if not _is_answer_released(question_id):
+        if analysis.get("question_pending_review") or not _is_answer_released(question_id):
             response_data.update({"final_answer_explanation": None, "explanation": teaching.get("guided_explanation", ""), "answer_released": False})
         else:
             response_data["answer_released"] = True

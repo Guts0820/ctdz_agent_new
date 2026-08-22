@@ -14,6 +14,7 @@ from backend.shared.http_client import create_direct_httpx_client
 
 SERVICE_DIR = Path(__file__).resolve().parent
 load_dotenv(SERVICE_DIR / ".env")
+load_dotenv(SERVICE_DIR.parents[2] / ".env")
 
 
 class LlmJudgeResult(BaseModel):
@@ -40,18 +41,32 @@ class QuestionRerankResult(BaseModel):
     reason: str
 
 
+class UnseenQuestionJudgeResult(BaseModel):
+    """判定题库未收录题目时，模型返回的受约束结果。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    standard_answer: str = Field(min_length=1)
+    standard_solve_steps: str = ""
+    judge_result: Literal["correct", "wrong", "unknown"]
+    step_feedback: str
+    error_step_list: List[str]
+    miss_step_list: List[str]
+    core_error_type: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 def _setting(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
 def _client() -> OpenAI:
-    api_key = _setting("ANALYSIS_LLM_API_KEY")
+    api_key = _setting("ANALYSIS_LLM_API_KEY") or _setting("QWEN_API_KEY") or _setting("LLM_API_KEY")
     if not api_key:
-        raise RuntimeError("ANALYSIS_LLM_API_KEY is not configured")
+        raise RuntimeError("No LLM API key is configured")
     base_url = _setting(
         "ANALYSIS_LLM_BASE_URL",
-        "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    )
+    ) or _setting("QWEN_BASE_URL") or _setting("LLM_BASE_URL") or "https://dashscope.aliyuncs.com/compatible-mode/v1"
     return OpenAI(
         api_key=api_key,
         base_url=base_url,
@@ -117,7 +132,7 @@ def judge_with_llm(
 ) -> dict:
     """调用本模块配置的 LLM，并返回通过 schema 校验的结果。"""
 
-    model = _setting("ANALYSIS_LLM_MODEL", "qwen3.7-plus")
+    model = _setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus"
     completion = _client().chat.completions.create(
         model=model,
         temperature=0,
@@ -141,6 +156,42 @@ def judge_with_llm(
     content = completion.choices[0].message.content
     payload = _parse_json_content(content)
     return LlmJudgeResult.model_validate(payload).model_dump()
+
+
+def judge_unseen_question_with_llm(*, question: str, student_answer: str) -> dict:
+    """Solve and judge an OCR question that has no graph candidate yet."""
+    prompt = f"""请先独立解答这道小学数学题，再判断学生作答是否正确。
+
+题目：
+{question}
+
+学生作答：
+{student_answer}
+
+必须输出 JSON，字段只能是：
+{{
+  "standard_answer": "简洁、可核验的标准答案",
+  "standard_solve_steps": "简短解题步骤",
+  "judge_result": "correct|wrong|unknown",
+  "step_feedback": "简短反馈",
+  "error_step_list": ["错误步骤"],
+  "miss_step_list": ["缺失步骤"],
+  "core_error_type": "错误类型，无错误时为空字符串",
+  "confidence": 0.0
+}}
+无法可靠识别题意或作答时，judge_result 必须为 unknown，confidence 必须低于 0.5。"""
+    completion = _client().chat.completions.create(
+        model=_setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus",
+        temperature=0,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": "你是保守的小学数学解题与判题器，不得臆造题意。"},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    return UnseenQuestionJudgeResult.model_validate(
+        _parse_json_content(completion.choices[0].message.content)
+    ).model_dump()
 
 
 def rerank_question_candidates(*, question: str, candidates: list[dict]) -> dict:
@@ -176,7 +227,7 @@ def rerank_question_candidates(*, question: str, candidates: list[dict]) -> dict
 }}
 """
     completion = _client().chat.completions.create(
-        model=_setting("ANALYSIS_LLM_MODEL", "qwen3.7-plus"),
+        model=_setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus",
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
