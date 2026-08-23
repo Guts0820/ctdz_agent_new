@@ -19,3 +19,9 @@ class BatchResponse(BaseModel):
     batch_date: str
     release_status: str
     question_count: int
+    question_ids: list[str] = []
+
+
+class BatchListResponse(BaseModel):
+    data: list[BatchResponse]
+    total: int

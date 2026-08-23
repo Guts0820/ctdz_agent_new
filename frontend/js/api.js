@@ -297,6 +297,13 @@ const Api = {
         });
     },
 
+    async getHomeworkBatches(teacherId, classId) {
+        const params = [];
+        if (teacherId) params.push('teacher_id=' + encodeURIComponent(teacherId));
+        if (classId) params.push('class_id=' + encodeURIComponent(classId));
+        return this.fetch('/v1/teacher/homework_batch' + (params.length ? '?' + params.join('&') : ''));
+    },
+
     // 获取题目列表（用于批次选题）
     async getQuestionsForBatch(grade, knowledgeId, page, pageSize) {
         var params = [];

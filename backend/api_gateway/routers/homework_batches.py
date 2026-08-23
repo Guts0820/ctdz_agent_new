@@ -1,10 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from backend.api_gateway.models import BatchResponse, CreateBatchRequest, ReleasePartialRequest
 from backend.api_gateway.services.teacher_client import (
     create_batch,
     release_batch,
     release_partial_batch,
+    list_batches,
 )
 
 
@@ -14,6 +15,11 @@ router = APIRouter(prefix="/api/v1/teacher/homework_batch", tags=["homework-batc
 @router.post("", response_model=BatchResponse)
 def create_homework_batch(request: CreateBatchRequest) -> BatchResponse:
     return BatchResponse(**create_batch(request.model_dump()))
+
+
+@router.get("")
+def get_homework_batches(teacher_id: str | None = Query(None), class_id: str | None = Query(None)):
+    return list_batches(teacher_id=teacher_id, class_id=class_id)
 
 
 @router.post("/{batch_id}/release")

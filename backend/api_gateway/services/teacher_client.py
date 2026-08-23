@@ -49,3 +49,13 @@ def release_partial_batch(batch_id: str, question_ids: list[str]) -> dict[str, A
         f"/internal/api/v1/teacher/homework_batch/{batch_id}/release_partial",
         {"question_ids": question_ids},
     )
+
+
+def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> dict[str, Any]:
+    params = []
+    if teacher_id:
+        params.append(f"teacher_id={teacher_id}")
+    if class_id:
+        params.append(f"class_id={class_id}")
+    path = "/internal/api/v1/teacher/homework_batch" + ("?" + "&".join(params) if params else "")
+    return _request("GET", path)

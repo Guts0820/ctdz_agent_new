@@ -8,6 +8,7 @@ from backend.services.knowledge_graph_service.routers.knowledge_points import ro
 from backend.services.knowledge_graph_service.routers.questions import router as questions_router
 from backend.services.knowledge_graph_service.routers.error_causes import router as error_causes_router
 from backend.services.knowledge_graph_service.routers.internal_questions import router as internal_questions_router
+from backend.services.knowledge_graph_service.routers.admin_questions import router as admin_questions_router
 from backend.services.knowledge_graph_service.vector_index import ensure_vector_index
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
@@ -39,6 +40,7 @@ app.include_router(knowledge_points_router)
 app.include_router(questions_router)
 app.include_router(error_causes_router)
 app.include_router(internal_questions_router)
+app.include_router(admin_questions_router)
 
 @app.on_event("startup")
 async def startup():

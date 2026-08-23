@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from backend.shared.id_utils import generate_id
 from backend.services.teacher_service.database import get_teacher_db
-from backend.services.teacher_service.models import BatchResponse, CreateBatchRequest
+from backend.services.teacher_service.models import BatchResponse, BatchListResponse, CreateBatchRequest
 from backend.shared.config import KNOWLEDGE_GRAPH_URL, HTTP_TIMEOUT_SECONDS
 
 
@@ -61,7 +61,33 @@ def create_batch(request: CreateBatchRequest) -> BatchResponse:
         batch_date=request.batch_date,
         release_status="locked",
         question_count=len(question_ids),
+        question_ids=question_ids,
     )
+
+
+def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> BatchListResponse:
+    with get_teacher_db() as connection:
+        clauses, params = [], []
+        if teacher_id:
+            clauses.append("hb.teacher_id = ?")
+            params.append(teacher_id)
+        if class_id:
+            clauses.append("hb.class_id = ?")
+            params.append(class_id)
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        rows = connection.execute(
+            f"SELECT hb.batch_id, hb.class_id, hb.teacher_id, hb.batch_date, hb.release_status, "
+            f"COUNT(hbq.question_id) AS question_count FROM homework_batch hb "
+            f"LEFT JOIN homework_batch_question hbq ON hbq.batch_id = hb.batch_id{where} "
+            "GROUP BY hb.batch_id ORDER BY hb.created_at DESC", params
+        ).fetchall()
+        result = []
+        for row in rows:
+            ids = [item[0] for item in connection.execute(
+                "SELECT question_id FROM homework_batch_question WHERE batch_id = ? ORDER BY rowid", (row["batch_id"],)
+            ).fetchall()]
+            result.append(BatchResponse(**dict(row), question_ids=ids))
+    return BatchListResponse(data=result, total=len(result))
 
 
 def release_batch(batch_id: str) -> dict:
@@ -85,11 +111,20 @@ def release_partial_batch(batch_id: str, question_ids: list[str]) -> dict:
             "SELECT 1 FROM homework_batch WHERE batch_id = ?", (batch_id,)
         ).fetchone():
             raise HTTPException(status_code=404, detail=f"批次不存在: {batch_id}")
+        requested = list(dict.fromkeys(str(question_id).strip() for question_id in question_ids if str(question_id).strip()))
+        assigned = {row[0] for row in connection.execute(
+            "SELECT question_id FROM homework_batch_question WHERE batch_id = ?", (batch_id,)
+        ).fetchall()}
+        invalid = [question_id for question_id in requested if question_id not in assigned]
+        if invalid:
+            raise HTTPException(status_code=422, detail=f"题目不属于当前批次: {', '.join(invalid)}")
+        if not requested:
+            raise HTTPException(status_code=422, detail="精细放行至少需要选择一道当前批次题目")
         timestamp = datetime.now().isoformat()
         connection.executemany(
             "INSERT OR IGNORE INTO question_release_override "
             "(batch_id, question_id, released_at) VALUES (?, ?, ?)",
-            [(batch_id, question_id, timestamp) for question_id in question_ids],
+            [(batch_id, question_id, timestamp) for question_id in requested],
         )
         connection.execute(
             "UPDATE homework_batch SET release_status = 'partial', release_time = ? "
@@ -99,7 +134,7 @@ def release_partial_batch(batch_id: str, question_ids: list[str]) -> dict:
         connection.commit()
     return {
         "status": "success",
-        "message": f"已放行 {len(question_ids)} 道题目",
+        "message": f"已放行 {len(requested)} 道题目",
         "release_status": "partial",
-        "released_count": len(question_ids),
+        "released_count": len(requested),
     }

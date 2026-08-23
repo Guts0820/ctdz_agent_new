@@ -558,8 +558,14 @@ const TeacherPage = {
     _partialQuestions: [],
 
     async loadBatches() {
-        // 批次数据暂时存内存，后续可加 API 查询
-        this.batches = this.batches || [];
+        try {
+            const user = MockData.currentUser || {};
+            const result = await Api.getHomeworkBatches(user.id, user.realClasses?.[0]);
+            this.batches = result.data || [];
+        } catch (error) {
+            console.error('Failed to load homework batches:', error);
+            this.batches = [];
+        }
     },
 
     async showCreateBatchModal() {
