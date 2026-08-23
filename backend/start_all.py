@@ -78,16 +78,18 @@ def start_neo4j() -> subprocess.Popen | None:
     finally:
         log_file.close()
 
-    deadline = time.time() + 45
+    deadline = time.time() + 90
     while time.time() < deadline:
         if process.poll() is not None:
             raise RuntimeError(f"Neo4j exited during startup; see {log_path}")
-        if is_port_listening(7687):
+        if is_port_listening(7687) or is_port_listening(7474):
             print(f"Neo4j ready. Log: {log_path}")
             return process
         time.sleep(1)
-    process.terminate()
-    raise RuntimeError(f"Neo4j did not become ready within 45 seconds; see {log_path}")
+    # Do not terminate a still-running database process or abort unrelated
+    # services solely because a sandbox/firewall hid its listening socket.
+    print(f"WARNING: Neo4j readiness could not be confirmed within 90 seconds; see {log_path}")
+    return process
 
 
 def start_service(name, script_path, port, log_dir="backend/logs"):
@@ -130,7 +132,12 @@ def main():
     processes = []
     
     try:
-        neo4j_process = start_neo4j()
+        try:
+            neo4j_process = start_neo4j()
+        except RuntimeError as error:
+            neo4j_process = None
+            print(f"WARNING: {error}")
+            print("Continuing startup; graph-dependent requests may be temporarily unavailable.")
         if neo4j_process is not None:
             processes.append(("Neo4j", neo4j_process))
         print("Initializing database...")

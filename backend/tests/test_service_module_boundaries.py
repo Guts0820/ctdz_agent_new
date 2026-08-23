@@ -40,3 +40,9 @@ def test_gateway_keeps_non_submission_routes_after_refactor() -> None:
     assert "/api/v1/teacher/homework_batch" in paths
     assert "/api/student/{student_id}/stats" in paths
     assert "/api/error/analyze" in paths
+
+
+def test_gateway_proxies_review_datahub_routes() -> None:
+    source = (REPOSITORY_ROOT / "backend" / "api_gateway" / "routers" / "review_proxy.py").read_text(encoding="utf-8")
+    assert '"/api/datahub/{path:path}"' in source
+    assert '_proxy("api/datahub", path, request)' in source
