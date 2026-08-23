@@ -34,26 +34,32 @@ def _lookup_knowledge_id(question_id: Optional[str]) -> Optional[str]:
     return row["knowledge_id"] if row else None
 
 
-def _is_answer_released(question_id: str) -> bool:
-    with _get_db() as connection:
-        row = connection.execute(
-            """
-            SELECT hb.release_status FROM homework_batch_question hbq
-            JOIN homework_batch hb ON hbq.batch_id = hb.batch_id
-            WHERE hbq.question_id = ? ORDER BY hb.created_at DESC LIMIT 1
-            """,
-            (question_id,),
-        ).fetchone()
-        if not row:
-            return True
-        if row["release_status"] == "released":
-            return True
-        if row["release_status"] != "partial":
-            return False
-        return connection.execute(
-            "SELECT 1 FROM question_release_override WHERE question_id = ?",
-            (question_id,),
-        ).fetchone() is not None
+def _is_answer_released(question_id: str, batch_id: Optional[str] = None) -> bool:
+    try:
+        with _get_db() as connection:
+            row = connection.execute(
+                """
+                SELECT hb.release_status, hb.batch_id FROM homework_batch_question hbq
+                JOIN homework_batch hb ON hbq.batch_id = hb.batch_id
+                WHERE hbq.question_id = ?
+                  AND (? IS NULL OR hb.batch_id = ?)
+                ORDER BY hb.created_at DESC LIMIT 1
+                """,
+                (question_id, batch_id, batch_id),
+            ).fetchone()
+            if not row:
+                return True
+            if row["release_status"] == "released":
+                return True
+            if row["release_status"] != "partial":
+                return False
+            return connection.execute(
+                "SELECT 1 FROM question_release_override WHERE batch_id = ? AND question_id = ?",
+                (row["batch_id"], question_id),
+            ).fetchone() is not None
+    except Exception as error:
+        print(f"[gateway] 答案放行状态查询失败，按 locked 处理: {error}")
+        return False
 
 
 def _ensure_mistake_case(student_id: str, question_id: Optional[str], answer_history_id: Optional[str]) -> str:
@@ -291,8 +297,19 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
             "original_question": analysis["original_question"],
             "student_write": analysis["student_write"],
         })
-        if analysis.get("question_pending_review") or not _is_answer_released(question_id):
-            response_data.update({"final_answer_explanation": None, "explanation": teaching.get("guided_explanation", ""), "answer_released": False})
+        release_allowed = (
+            _is_answer_released(question_id, request.batch_id)
+            if request.batch_id
+            else _is_answer_released(question_id)
+        )
+        if analysis.get("question_pending_review") or not release_allowed:
+            for sensitive_key in (
+                "answer", "answer_steps", "standard_answer", "standard_solve_steps",
+                "standard_explanation", "final_answer_explanation", "explanation",
+                "common_errors", "teaching_tips", "knowledge_explanation",
+            ):
+                response_data.pop(sensitive_key, None)
+            response_data.update({"answer_released": False})
         else:
             response_data["answer_released"] = True
         return SubmitResponse(status="success", data=response_data)

@@ -361,8 +361,6 @@ class SessionService:
             prompt=question.prompt,
             question_type=question.question_type,
             options=question.options,
-            answer=question.answer,
-            answer_steps=question.answer_steps,
             knowledge_point_ids=[item.knowledge_point_id for item in question.knowledge],
             difficulty=question.difficulty,
             source_type=question.source_type,
@@ -412,8 +410,9 @@ class SessionService:
 
             conn.close()
             return False  # locked
-        except Exception:
-            return True  # 查询失败不阻塞订正流程
+        except Exception as error:
+            print(f"[review] 答案放行状态查询失败，按 locked 处理: {error}")
+            return False  # fail-closed: 查询失败不得泄露答案
 
     def _record_attempt_to_neo4j(
         self,

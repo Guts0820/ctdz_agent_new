@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class SubmitRequest(BaseModel):
     student_id: str
+    batch_id: Optional[str] = None
     question_id: Optional[str] = None
     image: Optional[str] = None
     original_question: Optional[str] = None

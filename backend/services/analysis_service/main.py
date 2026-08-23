@@ -276,53 +276,11 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
             graph_available = False
             match = None
         if match is None:
-            try:
-                unseen = judge_unseen_question_with_llm(
-                    question=request.original_question,
-                    student_answer=request.student_write,
-                )
-            except Exception as error:
-                unseen = _judge_simple_arithmetic(request.original_question, request.student_write)
-                if unseen is not None:
-                    source = "rule_new_question"
-                else:
-                    if not os.getenv("ANALYSIS_LLM_API_KEY", "").strip():
-                        raise HTTPException(
-                            status_code=422,
-                            detail="未能可靠匹配知识图谱中的标准题目，且未配置 LLM 判题服务",
-                        ) from error
-                    raise HTTPException(
-                        status_code=503,
-                        detail=f"题库未收录，LLM 判题服务暂不可用：{error}",
-                    ) from error
-            else:
-                source = "llm_new_question"
-            standard_answer = unseen["standard_answer"].strip()
-            standard_solve_steps = unseen.get("standard_solve_steps") or ""
-            if graph_available:
-                try:
-                    matched_question = _upsert_unseen_question(
-                        request.original_question,
-                        standard_answer,
-                        standard_solve_steps,
-                    )
-                except Exception:
-                    graph_available = False
+            # 学生提交不能创建正式题库题目，也不能触发未知题标准解题。
+            # 只有教师题目录入流程允许建立新的 canonical question。
             if not graph_available:
-                matched_question = _upsert_unseen_question_locally(
-                    request.original_question,
-                    standard_answer,
-                    standard_solve_steps,
-                )
-                source = f"{source}_local"
-            question_id = str(matched_question.get("id") or "").strip() or None
-            knowledge_id = matched_question.get("knowledge_id")
-            question_match_confidence = unseen.get("confidence")
-            question_match_reason = (
-                "知识图谱暂不可用，判题后已暂存本地待审核题库。"
-                if not graph_available
-                else "题库未命中，由 LLM 解题后创建待审核题目。"
-            )
+                raise HTTPException(status_code=503, detail="题库检索服务暂不可用，请稍后重试")
+            raise HTTPException(status_code=422, detail="题目不在题库中")
         else:
             matched_question = match["question"]
             question_id = match["question_id"]

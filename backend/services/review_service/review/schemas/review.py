@@ -52,8 +52,6 @@ class QuestionForStudent(BaseModel):
     prompt: str
     question_type: Literal["open", "choice"] = "open"
     options: list[str] = []
-    answer: str = ""
-    answer_steps: list[str] = []
     knowledge_point_ids: list[str]
     difficulty: Difficulty
     source_type: str

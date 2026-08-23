@@ -117,140 +117,30 @@ def test_process_analysis_retrieves_a_graph_answer_before_judging(monkeypatch) -
     assert captured["committed"] is True
 
 
-def test_process_analysis_creates_a_pending_question_when_graph_has_no_match(monkeypatch) -> None:
+def test_process_analysis_rejects_unknown_question_without_writing_or_solving(monkeypatch) -> None:
     from backend.services.analysis_service import main as analysis_service
-
-    class FakeConnection:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            return False
-
-        def execute(self, query, values):
-            pass
-
-        def commit(self):
-            pass
-
     monkeypatch.setattr(analysis_service, "resolve_question_reference", lambda text: None)
-    monkeypatch.setattr(
-        analysis_service,
-        "judge_unseen_question_with_llm",
-        lambda **_kwargs: {
-            "standard_answer": "72",
-            "standard_solve_steps": "24乘以3等于72。",
-            "judge_result": "correct",
-            "step_feedback": "回答正确。",
-            "error_step_list": [],
-            "miss_step_list": [],
-            "core_error_type": "",
-            "confidence": 0.98,
-        },
-    )
-    monkeypatch.setattr(
-        analysis_service,
-        "_upsert_unseen_question",
-        lambda *_args: {"id": "TQ001", "knowledge_id": None},
-    )
-    monkeypatch.setattr(analysis_service, "get_db", lambda: FakeConnection())
-    monkeypatch.setattr(
-        analysis_service,
-        "judge_against_standard_answer",
-        lambda **kwargs: {
-            "judge_result": "correct",
-            "step_feedback": "回答正确。",
-            "error_step_list": [],
-            "miss_step_list": [],
-            "is_copy": False,
-            "core_error_type": "",
-            "confidence": 0.98,
-            "original_question": kwargs["question"],
-            "student_write": kwargs["student_answer"],
-            "text_status": "normal",
-        },
-    )
-
-    response = analysis_service.process_analysis(
-        analysis_service.AnalysisRequest(
-            student_id="S-0001",
-            original_question="图谱中不存在的题目",
-            student_write="72",
-        )
-    )
-
-    assert response.question_id == "TQ001"
-    assert response.question_source == "llm_new_question"
-    assert response.question_pending_review is True
+    def unexpected_solve(**_kwargs):
+        raise AssertionError("student unknown-question path must not call solve LLM")
+    monkeypatch.setattr(analysis_service, "judge_unseen_question_with_llm", unexpected_solve)
+    with pytest.raises(analysis_service.HTTPException) as error:
+        analysis_service.process_analysis(analysis_service.AnalysisRequest(
+            student_id="S-0001", original_question="图谱中不存在的题目", student_write="72"
+        ))
+    assert error.value.status_code == 422
+    assert error.value.detail == "题目不在题库中"
 
 
-def test_process_analysis_falls_back_to_local_pending_question_when_graph_is_down(monkeypatch) -> None:
+def test_process_analysis_returns_service_error_when_question_retrieval_is_down(monkeypatch) -> None:
     from backend.services.analysis_service import main as analysis_service
-
-    class FakeConnection:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_value, traceback):
-            return False
-
-        def execute(self, query, values):
-            return None
-
-        def commit(self):
-            pass
-
     monkeypatch.setattr(
         analysis_service,
         "resolve_question_reference",
         lambda _text: (_ for _ in ()).throw(ConnectionError("neo4j down")),
     )
-    monkeypatch.setattr(
-        analysis_service,
-        "judge_unseen_question_with_llm",
-        lambda **_kwargs: {
-            "standard_answer": "0.016",
-            "standard_solve_steps": "计算小数乘法。",
-            "judge_result": "correct",
-            "step_feedback": "回答正确。",
-            "error_step_list": [],
-            "miss_step_list": [],
-            "core_error_type": "",
-            "confidence": 0.98,
-        },
-    )
-    monkeypatch.setattr(
-        analysis_service,
-        "_upsert_unseen_question_locally",
-        lambda *_args: {"id": "TQLOCAL", "knowledge_id": None},
-    )
-    monkeypatch.setattr(analysis_service, "get_db", lambda: FakeConnection())
-    monkeypatch.setattr(
-        analysis_service,
-        "judge_against_standard_answer",
-        lambda **kwargs: {
-            "judge_result": "correct",
-            "step_feedback": "回答正确。",
-            "error_step_list": [],
-            "miss_step_list": [],
-            "is_copy": False,
-            "core_error_type": "",
-            "confidence": 0.98,
-            "original_question": kwargs["question"],
-            "student_write": kwargs["student_answer"],
-            "text_status": "normal",
-        },
-    )
-
-    response = analysis_service.process_analysis(
-        analysis_service.AnalysisRequest(
-            student_id="S-0001",
-            original_question="0.8×0.02=",
-            student_write="0.016",
-        )
-    )
-
-    assert response.question_id == "TQLOCAL"
-    assert response.question_source == "llm_new_question_local"
-    assert response.question_pending_review is True
+    with pytest.raises(analysis_service.HTTPException) as error:
+        analysis_service.process_analysis(analysis_service.AnalysisRequest(
+            student_id="S-0001", original_question="0.8×0.02=", student_write="0.016"
+        ))
+    assert error.value.status_code == 503
 import pytest
