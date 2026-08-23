@@ -1,4 +1,5 @@
 import math
+import os
 from datetime import date, datetime
 
 from backend.services.review_service.review.domain.enums import AssessmentState
@@ -11,6 +12,13 @@ from backend.services.review_service.review.schemas.priority import (
 
 
 RECENCY_DECAY = 0.85
+
+
+def _weight(name: str, default: float) -> float:
+    try:
+        return max(0.0, float(os.getenv(name, str(default))))
+    except ValueError:
+        return default
 
 
 def clip(value: float, minimum: float = 0, maximum: float = 100) -> float:
@@ -61,8 +69,9 @@ class PriorityCalculator:
         state: KnowledgeStateInput,
         business_date: date,
         calculated_at: datetime,
-        formula_version: str = "priority-v1.0",
+        formula_version: str | None = None,
     ) -> PriorityResult:
+        formula_version = formula_version or os.getenv("MASTERY_FORMULA_VERSION", "priority-v1.1")
         evidence = sorted(state.evidence, key=lambda item: item.occurred_at)
         results = [item.is_correct for item in evidence]
         severities = [item.error_severity for item in evidence if not item.is_correct and item.error_severity is not None]
@@ -93,7 +102,17 @@ class PriorityCalculator:
 
         error_severity = weighted_error_severity(severities)
         error_control = clip(100 - error_severity - 8 * state.wrong_streak)
-        raw_mastery = 0.4 * accuracy + 0.25 * consistency + 0.2 * retention + 0.15 * error_control
+        weights = {
+            "accuracy": _weight("MASTERY_WEIGHT_ACCURACY", 0.4),
+            "consistency": _weight("MASTERY_WEIGHT_CONSISTENCY", 0.25),
+            "retention": _weight("MASTERY_WEIGHT_RETENTION", 0.2),
+            "error_control": _weight("MASTERY_WEIGHT_ERROR_CONTROL", 0.15),
+        }
+        total_weight = sum(weights.values()) or 1.0
+        raw_mastery = (
+            weights["accuracy"] * accuracy + weights["consistency"] * consistency
+            + weights["retention"] * retention + weights["error_control"] * error_control
+        ) / total_weight
         confidence = 1 - math.exp(-total / 5)
         mastery = confidence * raw_mastery + (1 - confidence) * 50
         assessment_state = AssessmentState.UNASSESSED if total == 0 else AssessmentState.ASSESSED

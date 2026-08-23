@@ -39,6 +39,8 @@ class RecognitionService:
                 result = primary_result
 
         questions = _build_questions(result.blocks)
+        visual_block_count = sum(1 for block in result.blocks if block.get("type") in {"image", "table", "chart", "diagram"})
+        complexity = "complex_visual" if visual_block_count or len(questions) > 1 else "text"
         result_requires_review = (
             result.review_required
             if result.review_required is not None
@@ -62,6 +64,9 @@ class RecognitionService:
             raw_json=result.raw_json,
             questions=questions,
             analysis_input=result.structured_result,
+            question_count=len(questions),
+            visual_block_count=visual_block_count,
+            complexity=complexity,
         )
 
     @staticmethod

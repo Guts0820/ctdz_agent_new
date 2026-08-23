@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Header
 from typing import Optional, List, Dict
 from backend.shared.neo4j_connection import neo4j_conn
 from backend.api_gateway.user_database import user_db
@@ -341,6 +341,14 @@ def generate_growth_report(user_id: int):
         recent_progress=recent_progress,
         learning_path=learning_path
     )
+
+
+@router.get("/parent/growth_report/{user_id}", response_model=GrowthReport)
+def parent_growth_report(user_id: int, x_role: str | None = Header(None)):
+    """Parent-safe read-only report; students cannot use this elevated route."""
+    if (x_role or "").lower() not in {"parent", "admin"}:
+        raise HTTPException(status_code=403, detail="仅家长或管理员可查看成长报告")
+    return generate_growth_report(user_id)
 
 @router.get("/five_dimension_scores/{user_id}", response_model=List[FiveDimensionScore])
 def get_five_dimension_scores(user_id: int):

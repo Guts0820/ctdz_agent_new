@@ -78,6 +78,7 @@ class TeachingGenerateResponse(BaseModel):
     fallback_used: bool = False
     fallback_reason: Optional[str] = None
     practice_fallback_reason: Optional[str] = None
+    practice_mapping: Dict[str, str] = Field(default_factory=dict)
 
 
 class FrequencyCheckRequest(BaseModel):
@@ -225,6 +226,14 @@ def build_practice_list(questions: List[Dict], default_difficulty: str) -> List[
     return practice
 
 
+def map_error_tags_to_practice(error_tags: List[ErrorTag]) -> Dict[str, str]:
+    """Stable mapping used for analytics and practice retrieval explanation."""
+    mapping = {}
+    for tag in error_tags:
+        mapping[tag.error_id] = f"knowledge:{tag.level2 or tag.level1}|skill:{tag.level3}"
+    return mapping
+
+
 def save_teaching_content(request: TeachingGenerateRequest, response: TeachingGenerateResponse) -> None:
     with get_db() as connection:
         connection.execute(
@@ -273,6 +282,7 @@ def generate_teaching(request: TeachingGenerateRequest):
         fallback_used=fallback_used,
         fallback_reason=fallback_reason,
         practice_fallback_reason=practice_fallback_reason,
+        practice_mapping=map_error_tags_to_practice(request.error_tags),
     )
     save_teaching_content(request, response)
     return response

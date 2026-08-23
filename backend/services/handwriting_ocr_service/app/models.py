@@ -28,6 +28,9 @@ class RecognitionResult:
     raw_json: dict[str, object] | None = None
     questions: tuple[dict[str, object], ...] = ()
     analysis_input: dict[str, object] | None = None
+    question_count: int = 0
+    visual_block_count: int = 0
+    complexity: str = "text"
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -40,4 +43,7 @@ class RecognitionResult:
             "raw_json": self.raw_json,
             "questions": list(self.questions),
             "analysis_input": self.analysis_input,
+            "question_count": self.question_count,
+            "visual_block_count": self.visual_block_count,
+            "complexity": self.complexity,
         }
