@@ -5,13 +5,22 @@
 """
 
 import os
+import socket
 import subprocess
 import sys
 import time
 import webbrowser
 
 REPO = r"D:\ctdz_agent"
-VENV_PY = os.path.join(REPO, ".venv", "Scripts", "python.exe")
+VENV_PY = sys.executable
+
+
+def is_port_listening(port, timeout=0.5):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def kill_tree(proc):
@@ -33,28 +42,38 @@ def main():
     frontend = None
     backend = None
     try:
-        print("[1/2] 启动前端终端 (3000)...")
-        frontend = subprocess.Popen(
-            ["cmd.exe", "/k", "title ctdz Frontend &&", VENV_PY, "-m", "http.server", "3000", "--bind", "127.0.0.1"],
-            cwd=os.path.join(REPO, "frontend"),
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-
-        time.sleep(2)
-        try:
-            webbrowser.open("http://localhost:3000")
-        except Exception:
-            pass
-
-        print("[2/2] 启动 Backend 终端（含 OCR、网关和业务服务）...")
+        print("[1/2] 启动 Backend 终端（含 Neo4j、OCR、网关和业务服务）...")
         env = os.environ.copy()
         env["PYTHONPATH"] = REPO
+        env["PYTHONUNBUFFERED"] = "1"
         backend = subprocess.Popen(
-            ["cmd.exe", "/k", "title ctdz Backend &&", VENV_PY, os.path.join(REPO, "backend", "start_all.py")],
+            ["cmd.exe", "/k", "title ctdz Backend &&", VENV_PY, "-u", os.path.join(REPO, "backend", "start_all.py")],
             cwd=REPO,
             env=env,
             creationflags=subprocess.CREATE_NEW_CONSOLE,
         )
+
+        print("等待 API Gateway (8000) 就绪，最长 180 秒...")
+        ready_deadline = time.time() + 180
+        while time.time() < ready_deadline and not is_port_listening(8000):
+            time.sleep(1)
+        if not is_port_listening(8000):
+            raise RuntimeError("Backend did not become ready on port 8000 within 180 seconds. 请查看 ctdz Backend 窗口。")
+
+        print("[2/2] 启动前端终端 (3000)...")
+        frontend = subprocess.Popen(
+            ["cmd.exe", "/k", "title ctdz Frontend &&", VENV_PY, "-u", "-m", "http.server", "3000", "--bind", "127.0.0.1"],
+            cwd=os.path.join(REPO, "frontend"),
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+        )
+
+        frontend_deadline = time.time() + 15
+        while time.time() < frontend_deadline and not is_port_listening(3000):
+            time.sleep(0.5)
+        try:
+            webbrowser.open("http://localhost:3000")
+        except Exception:
+            pass
 
         deadline = time.time() + auto_stop if auto_stop > 0 else None
         while backend.poll() is None:
