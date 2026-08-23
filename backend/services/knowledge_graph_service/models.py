@@ -33,6 +33,10 @@ class Question(BaseModel):
     answer_steps: Optional[str] = None
     aliases: Optional[List[str]] = None
     explanation: Optional[str] = None
+    fingerprint: Optional[str] = None
+    status: Optional[str] = None
+    standard_solution_status: Optional[str] = None
+    llm_call_count: Optional[int] = None
 
 
 class QuestionCandidate(Question):
@@ -68,6 +72,7 @@ class StandardAnswerItem(BaseModel):
     text: str = Field(min_length=1)
     explanation: str = ""
     answer: str = Field(min_length=1)
+    request_id: Optional[str] = None
 
 
 class StandardAnswerUpsertRequest(BaseModel):

@@ -47,6 +47,7 @@ class AnalysisRequest(BaseModel):
     student_write: str = ""
     standard_answer: Optional[str] = None
     standard_solve_steps: Optional[str] = None
+    allowed_question_ids: Optional[List[str]] = None
 
 
 class AnalysisResponse(BaseModel):
@@ -271,7 +272,13 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
     if not standard_answer:
         graph_available = True
         try:
-            match = resolve_question_reference(request.original_question)
+                try:
+                    match = resolve_question_reference(
+                        request.original_question,
+                        allowed_question_ids=request.allowed_question_ids,
+                    )
+                except TypeError:
+                    match = resolve_question_reference(request.original_question)
         except Exception:
             graph_available = False
             match = None

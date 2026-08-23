@@ -44,6 +44,13 @@ app.include_router(internal_questions_router)
 async def startup():
     neo4j_conn.connect()
     try:
+        neo4j_conn.query(
+            "CREATE CONSTRAINT question_fingerprint_unique IF NOT EXISTS "
+            "FOR (q:Question) REQUIRE q.fingerprint IS UNIQUE"
+        )
+    except Exception as error:
+        print(f"Question fingerprint constraint unavailable; upsert remains fingerprint-based: {error}")
+    try:
         ensure_vector_index()
     except Exception as error:
         print(f"Vector index unavailable; lexical retrieval remains enabled: {error}")

@@ -36,6 +36,10 @@ def _to_question(question: dict) -> Question:
         answer_steps=question.get("answer_steps"),
         aliases=question.get("aliases"),
         explanation=question.get("explanation"),
+        fingerprint=question.get("fingerprint"),
+        status=question.get("status", "ready"),
+        standard_solution_status=question.get("standard_solution_status", "ready"),
+        llm_call_count=question.get("llm_call_count", 0),
     )
 
 

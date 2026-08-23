@@ -1,4 +1,5 @@
 from typing import Any
+import hashlib
 
 import requests
 from fastapi import HTTPException
@@ -82,6 +83,10 @@ def upload_standard_answers(image_bytes: bytes, filename: str, content_type: str
         raise HTTPException(status_code=502, detail="OCR 服务返回了无效 JSON。") from error
 
     graph_items = build_graph_items(ocr_payload)
+    for item in graph_items:
+        item["request_id"] = hashlib.sha256(
+            f"{item['text']}\n{item['answer']}\n{item['explanation']}".encode("utf-8")
+        ).hexdigest()
     try:
         graph_response = requests.post(
             f"{KNOWLEDGE_GRAPH_URL.rstrip('/')}/internal/api/questions/standard-answer",

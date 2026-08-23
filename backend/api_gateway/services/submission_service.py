@@ -34,6 +34,19 @@ def _lookup_knowledge_id(question_id: Optional[str]) -> Optional[str]:
     return row["knowledge_id"] if row else None
 
 
+def _batch_question_ids(batch_id: Optional[str]) -> Optional[list[str]]:
+    if not batch_id:
+        return None
+    with _get_db() as connection:
+        rows = connection.execute(
+            "SELECT question_id FROM homework_batch_question WHERE batch_id = ?",
+            (batch_id,),
+        ).fetchall()
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"作业批次不存在或未分配题目: {batch_id}")
+    return [str(row["question_id"]) for row in rows]
+
+
 def _is_answer_released(question_id: str, batch_id: Optional[str] = None) -> bool:
     try:
         with _get_db() as connection:
@@ -115,24 +128,30 @@ def prepare_judging_input(request: SubmitRequest) -> dict[str, Any]:
             )
     if not question_text:
         raise HTTPException(status_code=422, detail="判题需要题干或有效的 OCR 图片")
+    allowed_question_ids = _batch_question_ids(request.batch_id)
+    if request.question_id and allowed_question_ids is not None and request.question_id not in allowed_question_ids:
+        raise HTTPException(status_code=422, detail="题目不属于当前作业批次")
     graph_question = fetch_question(request.question_id) if request.question_id else None
     question_id = str(graph_question.get("id", "") or "").strip() if graph_question else None
     standard_answer = str(graph_question.get("answer", "") or "").strip() if graph_question else None
     standard_solve_steps = graph_question.get("answer_steps") if graph_question else None
     if graph_question and (not question_id or not standard_answer):
         raise HTTPException(status_code=422, detail="知识图谱题目缺少可用于判题的标准答案")
+    analysis_request = {
+        "student_id": request.student_id,
+        "question_id": question_id,
+        "original_question": question_text,
+        "student_write": student_answer,
+        "standard_answer": standard_answer,
+        "standard_solve_steps": standard_solve_steps,
+    }
+    if allowed_question_ids is not None:
+        analysis_request["allowed_question_ids"] = allowed_question_ids
     return {
         "question_id": question_id,
         "knowledge_id": str(graph_question.get("knowledge_id", "") or "").strip() or None if graph_question else None,
         "ocr_data": ocr_data,
-        "analysis_request": {
-            "student_id": request.student_id,
-            "question_id": question_id,
-            "original_question": question_text,
-            "student_write": student_answer,
-            "standard_answer": standard_answer,
-            "standard_solve_steps": standard_solve_steps,
-        },
+        "analysis_request": analysis_request,
     }
 
 

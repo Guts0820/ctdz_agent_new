@@ -1,14 +1,47 @@
 from datetime import datetime
+from typing import Any
+
+import requests
 
 from fastapi import HTTPException
 
 from backend.shared.id_utils import generate_id
 from backend.services.teacher_service.database import get_teacher_db
 from backend.services.teacher_service.models import BatchResponse, CreateBatchRequest
+from backend.shared.config import KNOWLEDGE_GRAPH_URL, HTTP_TIMEOUT_SECONDS
+
+
+def _validate_ready_questions(question_ids: list[str]) -> list[str]:
+    """Ensure every selected canonical question is ready before assignment."""
+    unique_ids = list(dict.fromkeys(str(question_id).strip() for question_id in question_ids if str(question_id).strip()))
+    if not unique_ids:
+        raise HTTPException(status_code=422, detail="作业批次至少需要一道题目")
+    for question_id in unique_ids:
+        try:
+            response = requests.get(
+                f"{KNOWLEDGE_GRAPH_URL.rstrip('/')}/api/questions/{question_id}",
+                timeout=HTTP_TIMEOUT_SECONDS,
+            )
+        except requests.RequestException as error:
+            raise HTTPException(status_code=503, detail="统一题库服务暂不可用，请稍后重试") from error
+        if response.status_code == 404:
+            raise HTTPException(status_code=422, detail=f"题目 {question_id} 不在统一题库中")
+        if response.status_code >= 400:
+            raise HTTPException(status_code=503, detail="统一题库题目状态暂不可用，请稍后重试")
+        try:
+            payload: dict[str, Any] = response.json()
+        except ValueError as error:
+            raise HTTPException(status_code=503, detail="统一题库返回了无效题目状态") from error
+        status = str(payload.get("status") or "ready").lower()
+        solution_status = str(payload.get("standard_solution_status") or "ready").lower()
+        if status != "ready" or solution_status != "ready":
+            raise HTTPException(status_code=422, detail=f"题目 {question_id} 尚未完成标准解题，不能布置")
+    return unique_ids
 
 
 def create_batch(request: CreateBatchRequest) -> BatchResponse:
     batch_id = generate_id("HB")
+    question_ids = _validate_ready_questions(request.question_ids)
     with get_teacher_db() as connection:
         connection.execute(
             """INSERT INTO homework_batch
@@ -18,7 +51,7 @@ def create_batch(request: CreateBatchRequest) -> BatchResponse:
         )
         connection.executemany(
             "INSERT INTO homework_batch_question (batch_id, question_id) VALUES (?, ?)",
-            [(batch_id, question_id) for question_id in request.question_ids],
+            [(batch_id, question_id) for question_id in question_ids],
         )
         connection.commit()
     return BatchResponse(
@@ -27,7 +60,7 @@ def create_batch(request: CreateBatchRequest) -> BatchResponse:
         teacher_id=request.teacher_id,
         batch_date=request.batch_date,
         release_status="locked",
-        question_count=len(request.question_ids),
+        question_count=len(question_ids),
     )
 
 

@@ -16,7 +16,11 @@ def _float_setting(name: str, default: float) -> float:
         return default
 
 
-def retrieve_question_candidates(question_text: str, limit: int = 5) -> list[dict[str, Any]]:
+def retrieve_question_candidates(
+    question_text: str,
+    limit: int = 5,
+    allowed_question_ids: Optional[list[str]] = None,
+) -> list[dict[str, Any]]:
     """Retrieve lexical candidates from the graph-owned question index."""
     response = requests.get(
         f"{KNOWLEDGE_GRAPH_URL.rstrip('/')}/api/questions/candidates",
@@ -28,7 +32,11 @@ def retrieve_question_candidates(question_text: str, limit: int = 5) -> list[dic
     candidates = payload.get("data") if isinstance(payload, dict) else None
     if not isinstance(candidates, list):
         raise ValueError("知识图谱候选题目响应格式错误")
-    return [candidate for candidate in candidates if isinstance(candidate, dict)]
+    allowed = {str(item) for item in (allowed_question_ids or [])}
+    return [
+        candidate for candidate in candidates
+        if isinstance(candidate, dict) and (not allowed or str(candidate.get("id")) in allowed)
+    ]
 
 
 def _build_match(candidate: dict[str, Any], rerank: dict[str, Any]) -> dict[str, Any]:
@@ -41,9 +49,17 @@ def _build_match(candidate: dict[str, Any], rerank: dict[str, Any]) -> dict[str,
     }
 
 
-def resolve_question_reference(question_text: str) -> Optional[dict[str, Any]]:
+def resolve_question_reference(
+    question_text: str,
+    allowed_question_ids: Optional[list[str]] = None,
+) -> Optional[dict[str, Any]]:
     """Resolve an OCR question only when the match is sufficiently reliable."""
-    candidates = retrieve_question_candidates(question_text)
+    try:
+        candidates = retrieve_question_candidates(question_text, allowed_question_ids=allowed_question_ids)
+    except TypeError:
+        # Keep compatibility with lightweight test/adapters that implement the
+        # original one-argument retrieval contract.
+        candidates = retrieve_question_candidates(question_text)
     if not candidates:
         return None
 
