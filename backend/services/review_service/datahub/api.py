@@ -23,7 +23,7 @@ error_analysis_client = ErrorAnalysisClient()
 
 
 @router.get("/growth_report/{student_id}", response_model=GrowthReportData)
-def get_growth_report(student_id: int):
+def get_growth_report(student_id: str):
     try:
         return aggregator.generate_growth_report(student_id)
     except Exception as e:
@@ -31,7 +31,7 @@ def get_growth_report(student_id: int):
 
 
 @router.get("/learning_path/{student_id}")
-def get_learning_path(student_id: int, limit: int = 5):
+def get_learning_path(student_id: str, limit: int = 5):
     try:
         path = path_recommender.generate_path(student_id, limit)
         return {"student_id": student_id, "path": path}
@@ -111,7 +111,7 @@ def get_high_frequency_wrong(class_id: int, limit: int = 5):
 
 
 @router.get("/learning_path/{student_id}/detailed")
-def get_detailed_learning_path(student_id: int, limit: int = 5):
+def get_detailed_learning_path(student_id: str, limit: int = 5):
     try:
         return path_recommender.generate_detailed_path(student_id, limit)
     except Exception as e:
@@ -132,7 +132,7 @@ def get_knowledge_detail(knowledge_id: str):
 
 
 @router.get("/mistake_analysis/{student_id}")
-def get_mistake_analysis(student_id: int):
+def get_mistake_analysis(student_id: str):
     try:
         return path_recommender.get_mistake_analysis(student_id)
     except Exception as e:
@@ -140,7 +140,7 @@ def get_mistake_analysis(student_id: int):
 
 
 @router.get("/comprehensive/{student_id}")
-def get_comprehensive_analysis(student_id: int):
+def get_comprehensive_analysis(student_id: str):
     try:
         return aggregator.get_comprehensive_analysis(student_id)
     except Exception as e:

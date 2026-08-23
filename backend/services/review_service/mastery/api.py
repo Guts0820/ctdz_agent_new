@@ -56,7 +56,7 @@ def calculate_single_mastery(student_id: int, knowledge_id: str):
 
 
 @router.post("/five_dimension")
-def get_five_dimension_scores(student_id: int):
+def get_five_dimension_scores(student_id: str):
     try:
         knowledge_points = db.get_student_knowledge_points(student_id)
         
@@ -113,7 +113,7 @@ def get_class_average_mastery(class_id: int):
 
 
 @router.get("/student_overview/{student_id}")
-def get_student_mastery_overview(student_id: int):
+def get_student_mastery_overview(student_id: str):
     try:
         knowledge_points = db.get_student_knowledge_points(student_id)
         

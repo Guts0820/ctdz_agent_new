@@ -71,7 +71,7 @@ class PriorityCalculator:
         calculated_at: datetime,
         formula_version: str | None = None,
     ) -> PriorityResult:
-        formula_version = formula_version or os.getenv("MASTERY_FORMULA_VERSION", "priority-v1.1")
+        formula_version = formula_version or os.getenv("MASTERY_FORMULA_VERSION", "priority-v1.0")
         evidence = sorted(state.evidence, key=lambda item: item.occurred_at)
         results = [item.is_correct for item in evidence]
         severities = [item.error_severity for item in evidence if not item.is_correct and item.error_severity is not None]

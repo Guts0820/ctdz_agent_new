@@ -13,7 +13,7 @@ class LearningPathNode(BaseModel):
 
 
 class LearningPathResult(BaseModel):
-    student_id: int
+    student_id: str
     path: List[LearningPathNode]
 
 
@@ -53,7 +53,7 @@ class ReviewPlanStatistics(BaseModel):
 
 
 class GrowthReportData(BaseModel):
-    student_id: int
+    student_id: str
     five_dimension_scores: List[Dict]
     weak_knowledge_areas: List[Dict]
     recent_progress: List[Dict]
