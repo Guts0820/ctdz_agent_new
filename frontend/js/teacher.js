@@ -212,7 +212,7 @@ const TeacherPage = {
         }
 
         try {
-            const classesResult = await Api.getClasses();
+            const classesResult = await Api.getClasses(user.role === 'teacher' ? user.id : null);
             const classes = classesResult.data || [];
 
             if (user.role === 'teacher') {

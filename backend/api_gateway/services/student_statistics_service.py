@@ -42,7 +42,9 @@ def get_wrong_answers(student_id: str) -> dict:
     with get_gateway_db() as connection:
         rows = connection.execute(
             """SELECT mc.mistake_case_id, mc.question_id, mc.current_status, mc.created_at,
-                      initial.student_ocr_answer, initial.core_error_type, initial.ocr_question,
+                      COALESCE(initial.student_ocr_answer, question_history.student_ocr_answer) AS student_ocr_answer,
+                      COALESCE(initial.core_error_type, question_history.core_error_type) AS core_error_type,
+                      COALESCE(initial.ocr_question, question_history.ocr_question) AS ocr_question,
                       q.question_description,
                       (SELECT COUNT(*) FROM answer_history attempts
                        WHERE attempts.mistake_case_id = mc.mistake_case_id
@@ -62,6 +64,11 @@ def get_wrong_answers(student_id: str) -> dict:
                    ORDER BY ah.submitted_at LIMIT 1
                )
                LEFT JOIN question q ON mc.question_id = q.question_id
+               LEFT JOIN answer_history question_history ON question_history.answer_history_id = (
+                   SELECT qh.answer_history_id FROM answer_history qh
+                   WHERE qh.student_id = mc.student_id AND qh.question_id = mc.question_id
+                   ORDER BY qh.submitted_at DESC LIMIT 1
+               )
                WHERE mc.student_id = ? ORDER BY mc.created_at DESC""",
             (student_id,),
         ).fetchall()

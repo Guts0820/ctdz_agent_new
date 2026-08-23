@@ -18,6 +18,14 @@ CREATE TABLE IF NOT EXISTS students (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS teacher_class (
+    teacher_id VARCHAR(32) NOT NULL,
+    class_id VARCHAR(32) NOT NULL,
+    class_name VARCHAR(50) NOT NULL,
+    grade VARCHAR(20),
+    PRIMARY KEY (teacher_id, class_id)
+);
+
 CREATE TABLE IF NOT EXISTS knowledge (
     knowledge_id VARCHAR(32) PRIMARY KEY,
     knowledge_scope VARCHAR(200),
@@ -304,9 +312,24 @@ INITIAL_DATA = {
         ('M-002', '粗心', '符号错误', '符号错误', '运算符号使用错误', '提醒学生看清运算符号')
     ],
     'students': [
+        ('S001', '2019-03-12', '许嘉豪', '男', '阳光小学', '一(1)班', '一年级'),
+        ('S002', '2019-05-20', '林雨桐', '女', '阳光小学', '一(1)班', '一年级'),
+        ('S003', '2019-01-08', '陈子轩', '男', '阳光小学', '一(1)班', '一年级'),
+        ('S004', '2019-07-16', '周可欣', '女', '阳光小学', '一(2)班', '一年级'),
+        ('S005', '2019-02-11', '王浩宇', '男', '阳光小学', '一(2)班', '一年级'),
+        ('S006', '2019-06-02', '李欣怡', '女', '阳光小学', '一(2)班', '一年级'),
+        ('S007', '2019-04-19', '赵晨曦', '男', '阳光小学', '一(3)班', '一年级'),
+        ('S008', '2019-08-25', '孙语涵', '女', '阳光小学', '一(3)班', '一年级'),
         ('S-0001', '2018-09-01', '小明', '男', '阳光小学', '三年级(1)班', '三年级'),
         ('S-0002', '2018-06-15', '小红', '女', '阳光小学', '三年级(1)班', '三年级'),
         ('S-0003', '2017-12-20', '小刚', '男', '阳光小学', '四年级(2)班', '四年级')
+    ],
+    'teacher_class': [
+        ('T001', 'C001', '一(1)班', '一年级'),
+        ('T001', 'C002', '一(2)班', '一年级'),
+        ('T001', 'C003', '一(3)班', '一年级'),
+        ('T002', 'C004', '二(1)班', '二年级'),
+        ('T003', 'C005', '三(1)班', '三年级')
     ],
     'question': [
         ('Q-0001', '小明有25颗糖果，小红有38颗糖果，他们一共有多少颗糖果？', '计算题', 'medium', '三年级', '人教版', '1. 相同数位对齐：25+38\n2. 个位相加：5+8=13，写3进1\n3. 十位相加：2+3+1=6\n4. 结果：63', '63'),
@@ -393,7 +416,11 @@ def init_database():
         
         cursor.execute(f'SELECT COUNT(*) FROM {table}')
         count = cursor.fetchone()[0]
-        if count == 0:
+        if table in {'students', 'teacher_class'}:
+            placeholders = ','.join(['?' for _ in data[0]])
+            columns = column_mappings.get(table, '')
+            cursor.executemany(f'INSERT OR IGNORE INTO {table} {columns} VALUES ({placeholders})', data)
+        elif count == 0:
             placeholders = ','.join(['?' for _ in data[0]])
             columns = column_mappings.get(table, '')
             cursor.executemany(f'INSERT INTO {table} {columns} VALUES ({placeholders})', data)

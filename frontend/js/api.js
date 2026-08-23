@@ -47,8 +47,8 @@ const Api = {
         });
     },
 
-    async getClasses() {
-        return this.fetch('/students/classes');
+    async getClasses(teacherId) {
+        return this.fetch('/students/classes' + (teacherId ? '?teacher_id=' + encodeURIComponent(teacherId) : ''));
     },
 
     async getStudent(studentId) {
