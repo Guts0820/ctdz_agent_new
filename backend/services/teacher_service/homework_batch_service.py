@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from backend.shared.id_utils import generate_id
 from backend.services.teacher_service.database import get_teacher_db
-from backend.services.teacher_service.models import BatchResponse, BatchListResponse, CreateBatchRequest
+from backend.services.teacher_service.models import BatchResponse, BatchListResponse, CreateBatchRequest, ManualReviewRequest
 from backend.shared.config import KNOWLEDGE_GRAPH_URL, HTTP_TIMEOUT_SECONDS
 
 
@@ -138,3 +138,41 @@ def release_partial_batch(batch_id: str, question_ids: list[str]) -> dict:
         "release_status": "partial",
         "released_count": len(requested),
     }
+
+
+def list_batch_submissions(batch_id: str) -> dict:
+    with get_teacher_db() as connection:
+        if not connection.execute("SELECT 1 FROM homework_batch WHERE batch_id = ?", (batch_id,)).fetchone():
+            raise HTTPException(status_code=404, detail=f"批次不存在: {batch_id}")
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(answer_history)").fetchall()}
+        if "batch_id" not in columns:
+            return {"data": [], "total": 0}
+        rows = connection.execute(
+            "SELECT answer_history_id, student_id, question_id, judge_result, step_feedback, confidence, submitted_at "
+            "FROM answer_history WHERE batch_id = ? ORDER BY submitted_at DESC", (batch_id,)
+        ).fetchall()
+    return {"data": [dict(row) for row in rows], "total": len(rows)}
+
+
+def review_submission(batch_id: str, answer_history_id: str, request: ManualReviewRequest) -> dict:
+    if request.decision not in {"correct", "wrong", "unknown"}:
+        raise HTTPException(status_code=422, detail="人工复核结果必须为 correct、wrong 或 unknown")
+    with get_teacher_db() as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(answer_history)").fetchall()}
+        if "batch_id" not in columns:
+            raise HTTPException(status_code=404, detail="未找到该批次答题记录")
+        row = connection.execute(
+            "SELECT 1 FROM answer_history WHERE answer_history_id = ? AND batch_id = ?", (answer_history_id, batch_id)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="答题记录不属于当前批次")
+        if "manual_review_comment" not in columns:
+            connection.execute("ALTER TABLE answer_history ADD COLUMN manual_review_comment TEXT")
+            connection.execute("ALTER TABLE answer_history ADD COLUMN manual_reviewed_at TEXT")
+        connection.execute(
+            "UPDATE answer_history SET judge_result = ?, is_correct = ?, manual_review_comment = ?, manual_reviewed_at = ? "
+            "WHERE answer_history_id = ? AND batch_id = ?",
+            (request.decision, request.decision == "correct", request.comment, datetime.now().isoformat(), answer_history_id, batch_id),
+        )
+        connection.commit()
+    return {"status": "success", "answer_history_id": answer_history_id, "decision": request.decision}

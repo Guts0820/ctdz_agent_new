@@ -42,6 +42,7 @@ DATABASE = DATABASE_PATH
 
 class AnalysisRequest(BaseModel):
     student_id: str
+    batch_id: Optional[str] = None
     question_id: Optional[str] = None
     original_question: str
     student_write: str = ""
@@ -311,14 +312,21 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
 
     answer_history_id = generate_id("AH")
     with get_db() as connection:
+        try:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(answer_history)").fetchall()}
+            if "batch_id" not in columns:
+                connection.execute("ALTER TABLE answer_history ADD COLUMN batch_id TEXT")
+        except TypeError:
+            columns = set()
         connection.execute(
             """
             INSERT INTO answer_history (
                 answer_history_id, student_id, question_id, submit_type, submit_count,
+                batch_id,
                 ocr_question, student_ocr_answer, student_ocr_steps, is_correct,
                 judge_result, step_feedback, error_step_list, miss_step_list,
                 is_copy, core_error_type, confidence, submitted_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 answer_history_id,
@@ -326,6 +334,7 @@ def process_analysis(request: AnalysisRequest) -> AnalysisResponse:
                 question_id,
                 "首次错题",
                 1,
+                request.batch_id,
                 process_result["original_question"],
                 process_result["student_write"],
                 "",

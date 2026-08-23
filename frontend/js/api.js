@@ -304,6 +304,16 @@ const Api = {
         return this.fetch('/v1/teacher/homework_batch' + (params.length ? '?' + params.join('&') : ''));
     },
 
+    async getBatchSubmissions(batchId) {
+        return this.fetch('/v1/teacher/homework_batch/' + batchId + '/submissions');
+    },
+
+    async reviewBatchSubmission(batchId, historyId, decision, comment) {
+        return this.fetch('/v1/teacher/homework_batch/' + batchId + '/submissions/' + historyId + '/review', {
+            method: 'POST', body: JSON.stringify({ decision: decision, comment: comment || '' })
+        });
+    },
+
     // 获取题目列表（用于批次选题）
     async getQuestionsForBatch(grade, knowledgeId, page, pageSize) {
         var params = [];

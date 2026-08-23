@@ -145,6 +145,8 @@ def prepare_judging_input(request: SubmitRequest) -> dict[str, Any]:
         "standard_answer": standard_answer,
         "standard_solve_steps": standard_solve_steps,
     }
+    if request.batch_id is not None:
+        analysis_request["batch_id"] = request.batch_id
     if allowed_question_ids is not None:
         analysis_request["allowed_question_ids"] = allowed_question_ids
     return {

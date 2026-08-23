@@ -25,3 +25,8 @@ class BatchResponse(BaseModel):
 class BatchListResponse(BaseModel):
     data: list[BatchResponse]
     total: int
+
+
+class ManualReviewRequest(BaseModel):
+    decision: str
+    comment: str = ""

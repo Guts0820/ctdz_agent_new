@@ -59,3 +59,11 @@ def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> 
         params.append(f"class_id={class_id}")
     path = "/internal/api/v1/teacher/homework_batch" + ("?" + "&".join(params) if params else "")
     return _request("GET", path)
+
+
+def list_batch_submissions(batch_id: str) -> dict[str, Any]:
+    return _request("GET", f"/internal/api/v1/teacher/homework_batch/{batch_id}/submissions")
+
+
+def review_batch_submission(batch_id: str, answer_history_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return _request("POST", f"/internal/api/v1/teacher/homework_batch/{batch_id}/submissions/{answer_history_id}/review", payload)
