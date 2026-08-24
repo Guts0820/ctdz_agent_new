@@ -1316,10 +1316,10 @@ const StudentPage = {
             </div>
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">🎯 五维能力雷达</div>
-                <div class="flex justify-center">
+                <div id="report-radar-container" class="flex justify-center">
                     <canvas id="report-radar" width="280" height="280"></canvas>
                 </div>
-                <div id="report-dimensions" class="grid grid-cols-5 gap-1 mt-2 text-center text-xs text-gray-500"></div>
+                <div id="report-dimensions" class="grid grid-cols-1 sm:grid-cols-5 gap-2 mt-3 text-center text-xs text-gray-500"></div>
             </div>
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">📈 知识点掌握总览</div>
@@ -1333,187 +1333,154 @@ const StudentPage = {
                     <div class="text-xs text-gray-400 text-center py-2">加载中...</div>
                 </div>
             </div>
-            <div class="bg-white rounded-2xl p-4 shadow-soft">
-                <div class="font-bold mb-3">💪 已掌握知识点</div>
-                <div id="report-mastered-container" class="grid grid-cols-2 gap-2">
-                    <div class="text-xs text-gray-400 text-center py-2 col-span-2">加载中...</div>
-                </div>
-            </div>
         </div>`;
 
-        // 异步加载
         var sid = user.userId || user.id || 'S-0001';
-        setTimeout(function() {
-            // 五维雷达图 + 掌握度总览
-            Api.fetch('/students/' + sid + '/mastery').then(function(data) {
-                var items = data.mastery_data || [];
-
-                // --- 五维能力映射 ---
-                var dims = { '运算能力':[], '逻辑思维':[], '空间想象':[], '应用理解':[], '学习韧性':[] };
-                var mapping = {
-                    '运算能力': ['加','减','乘','除','算','法','口算','竖式','进位','退位','混合运算'],
-                    '逻辑思维': ['规律','推理','排列','数位','顺序','比较','大小'],
-                    '空间想象': ['图形','周长','面积','体','形','角','长度','单位','厘米','米','分米'],
-                    '应用理解': ['应用','问题','实际','情境','生活','购物','时间','货币','统计'],
-                    '学习韧性': []  // 由最近连续正确/错误次数计算
-                };
-                for (var d in dims) {
-                    if (d === '学习韧性') continue;
-                    var keywords = mapping[d];
-                    var scores = [];
-                    for (var i = 0; i < items.length; i++) {
-                        var title = (items[i].title || items[i].knowledge_id || '');
-                        for (var j = 0; j < keywords.length; j++) {
-                            if (title.indexOf(keywords[j]) >= 0) { scores.push(items[i].mastery_level || 0); break; }
-                        }
-                    }
-                    dims[d] = scores.length > 0 ? Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length) : 50;
-                }
-                // 学习韧性 = (1 - 错题数/总题数) * 100，或默认50
-                dims['学习韧性'] = 50;
-
-                var dimLabels = Object.keys(dims);
-                var dimValues = dimLabels.map(function(k) { return dims[k]; });
-                var dimColors = ['#f5576c','#4facfe','#43e97b','#f093fb','#ffa726'];
-
-                // 雷达图
-                setTimeout(function() {
-                    var ctx = document.getElementById('report-radar');
-                    if (ctx && typeof Chart !== 'undefined') {
-                        new Chart(ctx, { type:'radar', data:{ labels:dimLabels, datasets:[{
-                            label:'能力评分', data:dimValues,
-                            backgroundColor:'rgba(102,126,234,0.2)',
-                            borderColor:'rgba(102,126,234,1)', borderWidth:2,
-                            pointBackgroundColor:dimColors
-                        }]}, options:{ scales:{ r:{ beginAtZero:true, max:100, ticks:{stepSize:20} } } } });
-                    }
-                }, 200);
-
-                // 维度标签
-                var dimEl = document.getElementById('report-dimensions');
-                if (dimEl) dimEl.innerHTML = dimLabels.map(function(k,i){ return '<div><span style="color:'+dimColors[i]+'">●</span> '+k+'<br>'+dimValues[i]+'</div>'; }).join('');
-
-                // --- 掌握度总览 ---
-                var c = document.getElementById('report-overview-container');
-                if (!c) return;
-                if (items.length === 0) {
-                    c.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">暂无数据</div>';
-                    return;
-                }
-                items.sort(function(a, b) { return (a.mastery_level || 0) - (b.mastery_level || 0); });
-                var weak = items.filter(function(i) { return (i.mastery_level || 0) < 60; }).length;
-                var mid = items.filter(function(i) { var m = i.mastery_level || 0; return m >= 60 && m < 80; }).length;
-                var good = items.filter(function(i) { return (i.mastery_level || 0) >= 80; }).length;
-                var avg = items.length > 0 ? Math.round(items.reduce(function(s, i) { return s + (i.mastery_level || 0); }, 0) / items.length) : 0;
-                c.innerHTML =
-                    '<div class="grid grid-cols-4 gap-2 mb-3">' +
-                        '<div class="text-center p-2 bg-red-50 rounded-lg"><div class="font-bold text-red-600">' + weak + '</div><div class="text-xs text-red-500">薄弱</div></div>' +
-                        '<div class="text-center p-2 bg-yellow-50 rounded-lg"><div class="font-bold text-yellow-600">' + mid + '</div><div class="text-xs text-yellow-500">学习中</div></div>' +
-                        '<div class="text-center p-2 bg-green-50 rounded-lg"><div class="font-bold text-green-600">' + good + '</div><div class="text-xs text-green-500">已掌握</div></div>' +
-                        '<div class="text-center p-2 bg-blue-50 rounded-lg"><div class="font-bold text-blue-600">' + avg + '%</div><div class="text-xs text-blue-500">平均掌握度</div></div>' +
-                    '</div>' +
-                    items.slice(0, 10).map(function(k) {
-                        var lvl = k.mastery_level || 0;
-                        var barColor = lvl >= 80 ? 'bg-green-500' : lvl >= 60 ? 'bg-yellow-500' : 'bg-red-500';
-                        return '<div class="flex items-center gap-2"><div class="text-xs w-20 truncate">' + (k.title || k.knowledge_id) + '</div>' +
-                            '<div class="flex-1 bg-gray-200 rounded-full h-2"><div class="' + barColor + ' h-2 rounded-full" style="width:' + lvl + '%"></div></div>' +
-                            '<div class="text-xs w-10 text-right">' + lvl + '%</div></div>';
-                    }).join('');
-            }).catch(function() {});
-
-            // 薄弱知识点
-            Api.fetch('/students/' + sid + '/weak?threshold=60').then(function(data) {
-                var items = data.weak_points || [];
-                var c = document.getElementById('report-weak-container');
-                if (!c) return;
-                if (items.length === 0) {
-                    c.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">暂无薄弱知识点 🎉</div>';
-                    return;
-                }
-                c.innerHTML = items.map(function(k) {
-                    var lvl = k.mastery_level || 0;
-                    return '<div class="p-3 bg-red-50 rounded-xl border border-red-100">' +
-                        '<div class="flex items-center justify-between mb-1">' +
-                            '<span class="font-medium text-sm">' + (k.title || k.knowledge_id) + '</span>' +
-                            '<span class="badge bg-red-200 text-red-700">' + lvl + '%</span>' +
-                        '</div>' +
-                        '<div class="w-full bg-gray-200 rounded-full h-2">' +
-                            '<div class="bg-red-500 h-2 rounded-full" style="width:' + lvl + '%"></div>' +
-                        '</div></div>';
-                }).join('');
-            }).catch(function() {});
-
-            // 已掌握知识点
-            Api.fetch('/students/' + sid + '/mastery').then(function(data) {
-                var items = (data.mastery_data || []).filter(function(m) { return (m.mastery_level || 0) >= 80; });
-                var c = document.getElementById('report-mastered-container');
-                if (!c) return;
-                if (items.length === 0) {
-                    c.innerHTML = '<div class="text-xs text-gray-400 text-center py-2 col-span-2">暂无已掌握知识点</div>';
-                    return;
-                }
-                c.innerHTML = items.map(function(k) {
-                    return '<div class="p-2 bg-green-50 rounded-lg text-center">' +
-                        '<div class="text-sm font-medium">' + (k.title || k.knowledge_id) + '</div>' +
-                        '<div class="text-xs text-green-600">' + (k.mastery_level || 0) + '%</div></div>';
-                }).join('');
-            }).catch(function() {});
-        }, 100);
+        setTimeout(function() { StudentPage._loadGrowthReport(sid); }, 50);
 
         return html;
     },
 
     initReportCharts() {
-        // 五维雷达图需要后端聚合计算，原型阶段暂不展示
+        this._destroyReportRadar();
     },
 
-    _initReportChartsOld() {
-        setTimeout(() => {
-            const radarCtx = document.getElementById('radarChart');
-            if (radarCtx) {
-                new Chart(radarCtx, {
-                    type: 'radar',
-                    data: {
-                        labels: ['运算能力', '逻辑思维', '空间想象', '语言推理', '学习韧性'],
-                        datasets: [{
-                            label: '能力评分',
-                            data: MockData.fiveDimensionScores.dimensions.map(d => d.score),
-                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
-                            borderColor: 'rgba(102, 126, 234, 1)',
-                            borderWidth: 2,
-                            pointBackgroundColor: 'rgba(102, 126, 234, 1)'
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                max: 100
-                            }
-                        }
-                    }
-                });
+    async _loadGrowthReport(studentId) {
+        try {
+            var report = await Api.getGrowthReport(studentId);
+            this._renderGrowthReport(report);
+        } catch (error) {
+            this._renderGrowthReportError(error);
+        }
+    },
+
+    _renderGrowthReport(report) {
+        var radar = report.radar || {};
+        var dimensions = Array.isArray(radar.dimensions) ? radar.dimensions : [];
+        this._renderReportRadar(dimensions, radar.empty_state);
+        this._renderReportOverview(report.mastery_overview || {});
+        this._renderReportWeakAreas(report.weak_knowledge_areas || []);
+    },
+
+    _renderReportRadar(dimensions, emptyState) {
+        var container = document.getElementById('report-radar-container');
+        var dimensionElement = document.getElementById('report-dimensions');
+        if (!container || !dimensionElement) return;
+        if (dimensions.length === 0 || dimensions.every(function(item) { return item.status !== 'ready'; })) {
+            this._destroyReportRadar();
+            container.innerHTML = '<div class="text-center text-gray-500 py-8">' +
+                '<div class="text-4xl mb-3">📈</div><div class="font-medium">能力数据积累中</div>' +
+                '<div class="text-sm mt-2">' + this._escapeReportText(emptyState || '完成更多作答和复习后生成能力雷达图。') + '</div></div>';
+        } else {
+            container.innerHTML = '<canvas id="report-radar" width="280" height="280"></canvas>';
+            this._drawReportRadar(dimensions);
+        }
+        dimensionElement.innerHTML = dimensions.map(function(item) {
+            var score = typeof item.score === 'number' ? Math.round(item.score) + '分' : '积累中';
+            var quality = item.status === 'ready'
+                ? '样本 ' + (item.sample_count || 0) + '，' + StudentPage._formatReportConfidence(item.confidence)
+                : StudentPage._formatReportStatus(item.status, item.sample_count);
+            return '<div class="leading-5"><div class="font-medium text-gray-700">' + StudentPage._escapeReportText(item.label) + '</div>' +
+                '<div class="text-gray-500">' + score + '</div>' +
+                '<div class="text-gray-400">' + StudentPage._escapeReportText(quality) + '</div>' +
+                '<div class="text-gray-400">' + StudentPage._escapeReportText(item.summary || '') + '</div></div>';
+        }).join('');
+    },
+
+    _formatReportConfidence(confidence) {
+        var labels = { high: '数据充分', medium: '数据一般', low: '数据较少' };
+        return labels[confidence] || '数据待完善';
+    },
+
+    _formatReportStatus(status, sampleCount) {
+        if (status === 'unavailable') return '暂时不可用';
+        return '样本 ' + (sampleCount || 0) + '，数据积累中';
+    },
+
+    _drawReportRadar(dimensions) {
+        var canvas = document.getElementById('report-radar');
+        if (!canvas || typeof Chart === 'undefined') return;
+        this._destroyReportRadar();
+        this._reportRadarChart = new Chart(canvas, {
+            type: 'radar',
+            data: {
+                labels: dimensions.map(function(item) { return item.label; }),
+                datasets: [{
+                    label: '能力评分',
+                    data: dimensions.map(function(item) { return typeof item.score === 'number' ? item.score : null; }),
+                    backgroundColor: 'rgba(79, 70, 229, 0.16)',
+                    borderColor: 'rgb(79, 70, 229)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgb(16, 185, 129)',
+                    spanGaps: false
+                }]
+            },
+            options: {
+                responsive: false,
+                scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } },
+                plugins: { legend: { display: false } }
             }
-            
-            const barCtx = document.getElementById('barChart');
-            if (barCtx) {
-                new Chart(barCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: MockData.fiveDimensionScores.dimensions.map(d => d.label),
-                        datasets: [{
-                            label: '当前水平',
-                            data: MockData.fiveDimensionScores.dimensions.map(d => d.score),
-                            backgroundColor: ['#f5576c', '#ffc107', '#28a745', '#17a2b8', '#6f42c1']
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        scales: { x: { beginAtZero: true, max: 100 } }
-                    }
-                });
-            }
-        }, 100);
+        });
+    },
+
+    _destroyReportRadar() {
+        if (this._reportRadarChart) {
+            this._reportRadarChart.destroy();
+            this._reportRadarChart = null;
+        }
+    },
+
+    _renderReportOverview(overview) {
+        var container = document.getElementById('report-overview-container');
+        if (!container) return;
+        if (overview.average_mastery === null || typeof overview.average_mastery === 'undefined') {
+            container.innerHTML = '<div class="text-sm text-gray-500 text-center py-3">完成作答后显示掌握度总览。</div>';
+            return;
+        }
+        container.innerHTML = '<div class="grid grid-cols-4 gap-2">' +
+            this._reportMetric('bg-red-50 text-red-600', overview.weak_count || 0, '薄弱') +
+            this._reportMetric('bg-yellow-50 text-yellow-600', overview.developing_count || 0, '学习中') +
+            this._reportMetric('bg-green-50 text-green-600', overview.mastered_count || 0, '已掌握') +
+            this._reportMetric('bg-blue-50 text-blue-600', Math.round(overview.average_mastery) + '%', '平均掌握度') +
+            '</div>';
+    },
+
+    _reportMetric(colorClass, value, label) {
+        return '<div class="text-center p-2 rounded-lg ' + colorClass + '"><div class="font-bold">' + value + '</div><div class="text-xs">' + label + '</div></div>';
+    },
+
+    _renderReportWeakAreas(items) {
+        var container = document.getElementById('report-weak-container');
+        if (!container) return;
+        if (!items.length) {
+            container.innerHTML = '<div class="text-sm text-gray-500 text-center py-3">暂无薄弱知识点</div>';
+            return;
+        }
+        container.innerHTML = items.map(function(item) {
+            var level = Math.max(0, Math.min(100, Number(item.mastery_level) || 0));
+            return '<div class="p-3 bg-red-50 rounded-xl border border-red-100">' +
+                '<div class="flex items-center justify-between gap-2 mb-2"><span class="font-medium text-sm">' + StudentPage._escapeReportText(item.title || item.knowledge_id) + '</span>' +
+                '<span class="badge bg-red-200 text-red-700">' + level + '%</span></div>' +
+                '<div class="w-full bg-red-100 rounded-full h-2"><div class="bg-red-500 h-2 rounded-full" style="width:' + level + '%"></div></div>' +
+                '</div>';
+        }).join('');
+    },
+
+    _renderGrowthReportError(error) {
+        this._destroyReportRadar();
+        var message = this._escapeReportText(error.message || '请检查网络或服务状态');
+        var radarContainer = document.getElementById('report-radar-container');
+        var dimensions = document.getElementById('report-dimensions');
+        var overview = document.getElementById('report-overview-container');
+        var weak = document.getElementById('report-weak-container');
+        if (radarContainer) radarContainer.innerHTML = '<div class="text-center text-gray-500 py-8"><div class="text-4xl mb-3">⚠️</div><div class="font-medium">成长报告加载失败</div><div class="text-sm mt-2">' + message + '</div><button onclick="StudentPage.navigate(\'report\')" class="mt-4 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm">重试</button></div>';
+        if (dimensions) dimensions.innerHTML = '';
+        if (overview) overview.innerHTML = '<div class="text-sm text-gray-500 text-center py-3">报告数据暂不可用</div>';
+        if (weak) weak.innerHTML = '<div class="text-sm text-gray-500 text-center py-3">报告数据暂不可用</div>';
+    },
+
+    _escapeReportText(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     },
     
     initPathCharts() {}
