@@ -2,6 +2,7 @@ from .config import settings
 from .models import (
     LearningPathNode,
     LearningPathResult,
+    LearningPathResponse,
     StatisticsOverview,
     ClassMasteryData,
     ClassMasteryResult,
@@ -16,6 +17,7 @@ __all__ = [
     'settings',
     'LearningPathNode',
     'LearningPathResult',
+    'LearningPathResponse',
     'StatisticsOverview',
     'ClassMasteryData',
     'ClassMasteryResult',

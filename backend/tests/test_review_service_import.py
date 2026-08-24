@@ -28,3 +28,10 @@ def test_review_service_exposes_merged_mastery_and_datahub_routes() -> None:
     paths = set(app.openapi()["paths"])
     assert "/api/mastery/student_overview/{student_id}" in paths
     assert "/api/datahub/growth_report/{student_id}" in paths
+    assert "/api/datahub/learning_path/{student_id}" in paths
+
+
+def test_gateway_does_not_expose_a_second_learning_path_algorithm() -> None:
+    from backend.api_gateway.app import app
+
+    assert "/api/learning_path/{user_id}" not in app.openapi()["paths"]

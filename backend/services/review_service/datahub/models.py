@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from datetime import datetime
+
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 
 
@@ -15,6 +17,32 @@ class LearningPathNode(BaseModel):
 class LearningPathResult(BaseModel):
     student_id: str
     path: List[LearningPathNode]
+
+
+class LearningPathPrerequisite(BaseModel):
+    knowledge_id: str
+    title: str = ""
+
+
+class LearningPathRecommendation(BaseModel):
+    knowledge_id: str
+    title: str
+    sequence: int = Field(ge=1)
+    stage: str
+    mastery_level: float = Field(ge=0, le=100)
+    priority: float = Field(ge=0)
+    reason: str
+    prerequisites: List[LearningPathPrerequisite] = Field(default_factory=list)
+    estimated_minutes: int = Field(ge=1)
+    next_action: str
+
+
+class LearningPathResponse(BaseModel):
+    student_id: str
+    generated_at: datetime
+    source: str
+    data: List[LearningPathRecommendation] = Field(default_factory=list)
+    empty_state: Optional[str] = None
 
 
 class StatisticsOverview(BaseModel):

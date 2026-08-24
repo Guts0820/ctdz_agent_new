@@ -1,9 +1,25 @@
+import re
+import sqlite3
 import sys
+from datetime import datetime
+from typing import List, Dict, Optional
+
 sys.path.append('.')
 
-from typing import List, Dict, Optional
+from backend.shared.config import DATABASE_PATH
 from ..models import LearningPathNode
 from backend.shared.neo4j_connection import neo4j_conn
+
+
+def normalize_student_id(student_id: str | int) -> str:
+    """Normalize historical numeric and hyphenated IDs to the active S001 form."""
+    value = str(student_id).strip().upper()
+    matched = re.fullmatch(r"S-?0*(\d+)", value)
+    if matched:
+        return f"S{int(matched.group(1)):03d}"
+    if value.isdigit():
+        return f"S{int(value):03d}"
+    return value
 
 
 class LearningPathRecommender:
@@ -11,9 +27,86 @@ class LearningPathRecommender:
         pass
     
     def _format_student_id(self, student_id: int) -> str:
-        if isinstance(student_id, int):
-            return f"S{student_id:03d}"
-        return str(student_id)
+        return normalize_student_id(student_id)
+
+    def generate_contract_path(self, student_id: str | int, limit: int = 5) -> dict:
+        """Return the stable public contract using the SQLite mastery read model."""
+        normalized_student_id = normalize_student_id(student_id)
+        limit = max(1, min(int(limit), 20))
+        try:
+            with sqlite3.connect(DATABASE_PATH) as connection:
+                connection.row_factory = sqlite3.Row
+                rows = connection.execute(
+                    """SELECT knowledge_id, master_level, COALESCE(priority, 0) AS priority
+                       FROM knowledge_mastery
+                       WHERE student_id = ?
+                       ORDER BY priority DESC, master_level ASC, knowledge_id ASC
+                       LIMIT ?""",
+                    (normalized_student_id, limit),
+                ).fetchall()
+        except sqlite3.Error:
+            rows = []
+
+        if not rows:
+            return {
+                "student_id": normalized_student_id,
+                "generated_at": datetime.now().isoformat(),
+                "source": "sqlite_mastery_v1",
+                "data": [],
+                "empty_state": "暂无足够的学习记录，完成一次作答后将生成个性化学习路径。",
+            }
+
+        knowledge_ids = [str(row["knowledge_id"]) for row in rows]
+        details = self._get_contract_knowledge_details(knowledge_ids)
+        data = []
+        for sequence, row in enumerate(rows, start=1):
+            knowledge_id = str(row["knowledge_id"])
+            mastery_level = max(0.0, min(float(row["master_level"] or 0) * 100, 100.0))
+            priority = max(0.0, float(row["priority"] or 0))
+            detail = details.get(knowledge_id, {})
+            stage = "remedial" if mastery_level < 60 else "consolidation"
+            data.append({
+                "knowledge_id": knowledge_id,
+                "title": detail.get("title") or knowledge_id,
+                "sequence": sequence,
+                "stage": stage,
+                "mastery_level": round(mastery_level, 1),
+                "priority": round(priority, 2),
+                "reason": "当前掌握度较低，需要优先巩固。" if stage == "remedial" else "建议通过复习巩固当前知识点。",
+                "prerequisites": detail.get("prerequisites", []),
+                "estimated_minutes": 20 if stage == "remedial" else 15,
+                "next_action": "start_review",
+            })
+        return {
+            "student_id": normalized_student_id,
+            "generated_at": datetime.now().isoformat(),
+            "source": "sqlite_mastery_v1",
+            "data": data,
+            "empty_state": None,
+        }
+
+    def _get_contract_knowledge_details(self, knowledge_ids: List[str]) -> Dict[str, Dict]:
+        try:
+            rows = neo4j_conn.query(
+                """MATCH (kp:KnowledgePoint)
+                   WHERE kp.id IN $knowledge_ids
+                   OPTIONAL MATCH (prereq:KnowledgePoint)-[:PREREQUISITE_OF]->(kp)
+                   RETURN kp.id AS knowledge_id, kp.title AS title,
+                          collect(CASE WHEN prereq IS NULL THEN NULL ELSE {
+                              knowledge_id: prereq.id, title: prereq.title
+                          } END) AS prerequisites""",
+                {"knowledge_ids": knowledge_ids},
+            )
+        except Exception:
+            rows = []
+        return {
+            str(row["knowledge_id"]): {
+                "title": row.get("title") or "",
+                "prerequisites": [item for item in row.get("prerequisites", []) if item],
+            }
+            for row in rows
+            if row.get("knowledge_id")
+        }
     
     def _get_weak_knowledge_from_neo4j(self, student_id: int) -> List[Dict]:
         formatted_id = self._format_student_id(student_id)

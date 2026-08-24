@@ -5,7 +5,8 @@ from .models import (
     StatisticsOverview,
     ClassMasteryData,
     RevisionStatistics,
-    GrowthReportData
+    GrowthReportData,
+    LearningPathResponse,
 )
 from .core.learning_path import LearningPathRecommender
 from .core.statistics import StatisticsReporter
@@ -30,11 +31,10 @@ def get_growth_report(student_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/learning_path/{student_id}")
+@router.get("/learning_path/{student_id}", response_model=LearningPathResponse)
 def get_learning_path(student_id: str, limit: int = 5):
     try:
-        path = path_recommender.generate_path(student_id, limit)
-        return {"student_id": student_id, "path": path}
+        return path_recommender.generate_contract_path(student_id, limit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -397,7 +397,3 @@ def get_recent_progress_endpoint(
     days: int = Query(7, description="最近天数")
 ):
     return get_recent_progress(user_id, days)
-
-@router.get("/learning_path/{user_id}", response_model=List[LearningPathNode])
-def get_learning_path_endpoint(user_id: int):
-    return get_learning_path(user_id)
