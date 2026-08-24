@@ -493,6 +493,60 @@ const TeacherPage = {
                 </div>
             </div>
 
+            <div class="bg-white rounded-2xl p-4 shadow-soft border border-dashed border-green-300">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl shrink-0">📷</div>
+                        <div class="min-w-0">
+                            <div class="font-bold text-gray-800">录入标准答案题目</div>
+                            <div class="text-sm text-gray-500 truncate">上传包含题目和教师答案的图片，先预览复核再入库</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="TeacherPage.openQuestionImport()" class="shrink-0 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">开始录入</button>
+                </div>
+            </div>
+
+            <input id="teacher-question-camera" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" capture="environment" class="hidden" onchange="TeacherPage.handleQuestionImportFile(this.files[0])">
+            <input id="teacher-question-file" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" class="hidden" onchange="TeacherPage.handleQuestionImportFile(this.files[0])">
+
+            <div id="question-import-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="font-bold text-lg text-gray-800">录入标准答案题目</div>
+                            <div class="text-xs text-gray-500 mt-1">图片仅用于本次识别，不会在前端保存</div>
+                        </div>
+                        <button type="button" onclick="TeacherPage.closeQuestionImport()" class="text-gray-400 hover:text-gray-700 text-xl" title="关闭">×</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <label class="text-sm text-gray-700">适用年级 <span class="text-red-500">*</span>
+                            <select id="teacher-import-grade" class="mt-1 w-full border rounded-lg p-2" required>
+                                <option value="">请选择年级</option>
+                                <option value="1">一年级</option><option value="2">二年级</option><option value="3">三年级</option>
+                                <option value="4">四年级</option><option value="5">五年级</option><option value="6">六年级</option>
+                            </select>
+                        </label>
+                        <label class="text-sm text-gray-700">适用学期
+                            <select id="teacher-import-semester" class="mt-1 w-full border rounded-lg p-2">
+                                <option value="">不指定</option><option value="上学期">上学期</option><option value="下学期">下学期</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <button type="button" onclick="TeacherPage.chooseQuestionCamera()" class="py-3 border border-green-300 text-green-700 rounded-lg hover:bg-green-50">📷 拍照</button>
+                        <button type="button" onclick="TeacherPage.chooseQuestionFile()" class="py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">▣ 选择图片</button>
+                    </div>
+                    <div id="question-import-file-name" class="text-sm text-gray-500 bg-gray-50 rounded-lg p-3 mb-4">尚未选择图片</div>
+                    <div id="question-import-error" class="hidden text-sm text-red-600 bg-red-50 rounded-lg p-3 mb-4"></div>
+                    <div class="space-y-2 mb-5" aria-live="polite">
+                        <div class="flex items-center gap-2 text-sm" id="import-stage-upload"><span class="stage-icon">○</span><span>上传图片</span><span class="stage-detail text-gray-400"></span></div>
+                        <div class="flex items-center gap-2 text-sm" id="import-stage-ocr"><span class="stage-icon">○</span><span>OCR 识别题目和教师答案</span><span class="stage-detail text-gray-400"></span></div>
+                        <div class="flex items-center gap-2 text-sm" id="import-stage-llm"><span class="stage-icon">○</span><span>LLM 独立解题复核</span><span class="stage-detail text-gray-400"></span></div>
+                    </div>
+                    <button id="question-import-submit" type="button" onclick="TeacherPage.submitQuestionImport()" disabled class="w-full py-3 bg-gray-300 text-white rounded-lg font-medium cursor-not-allowed">上传并生成预览</button>
+                </div>
+            </div>
+
             ${batches.length === 0 ? `
             <div class="bg-white rounded-2xl p-8 shadow-soft text-center text-gray-400">
                 <div class="text-4xl mb-2">📋</div>
@@ -556,6 +610,9 @@ const TeacherPage = {
     _selectedQuestions: [],
     _partialBatchId: null,
     _partialQuestions: [],
+    _questionImportFile: null,
+    _questionImportBusy: false,
+    _pendingQuestionImportPreview: null,
 
     async loadBatches() {
         try {
@@ -566,6 +623,180 @@ const TeacherPage = {
             console.error('Failed to load homework batches:', error);
             this.batches = [];
         }
+    },
+
+    openQuestionImport() {
+        const modal = document.getElementById('question-import-modal');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        this._questionImportFile = null;
+        this._questionImportBusy = false;
+        this._pendingQuestionImportPreview = null;
+        const grade = document.getElementById('teacher-import-grade');
+        const userGrade = MockData.currentUser?.grade;
+        if (grade && userGrade >= 1 && userGrade <= 6) grade.value = String(userGrade);
+        this._resetQuestionImportStages();
+    },
+
+    closeQuestionImport() {
+        if (this._questionImportBusy) return;
+        const modal = document.getElementById('question-import-modal');
+        if (modal) modal.classList.add('hidden');
+        this._questionImportFile = null;
+    },
+
+    chooseQuestionCamera() {
+        if (this._questionImportBusy) return;
+        const input = document.getElementById('teacher-question-camera');
+        if (input) {
+            input.value = '';
+            input.click();
+        }
+    },
+
+    chooseQuestionFile() {
+        if (this._questionImportBusy) return;
+        const input = document.getElementById('teacher-question-file');
+        if (input) {
+            input.value = '';
+            input.click();
+        }
+    },
+
+    handleQuestionImportFile(file) {
+        if (!file) return;
+        const errorEl = document.getElementById('question-import-error');
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
+        const maxSize = 10 * 1024 * 1024;
+        if (!allowedTypes.includes(file.type)) {
+            this._showQuestionImportError('仅支持 JPEG、PNG、WebP 和 BMP 图片。');
+            return;
+        }
+        if (file.size > maxSize) {
+            this._showQuestionImportError('图片不能超过 10 MB，请压缩后重新选择。');
+            return;
+        }
+        if (errorEl) errorEl.classList.add('hidden');
+        this._questionImportFile = file;
+        this._pendingQuestionImportPreview = null;
+        const nameEl = document.getElementById('question-import-file-name');
+        if (nameEl) nameEl.textContent = `${file.name || '已选择图片'} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        const submit = document.getElementById('question-import-submit');
+        if (submit) {
+            submit.disabled = false;
+            submit.textContent = '上传并生成预览';
+            submit.className = 'w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium';
+        }
+    },
+
+    _showQuestionImportError(message, clearFile = true) {
+        const errorEl = document.getElementById('question-import-error');
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        if (clearFile) {
+            this._questionImportFile = null;
+            const nameEl = document.getElementById('question-import-file-name');
+            if (nameEl) nameEl.textContent = '尚未选择图片';
+        }
+        const submit = document.getElementById('question-import-submit');
+        if (submit && clearFile) {
+            submit.disabled = true;
+            submit.textContent = '上传并生成预览';
+            submit.className = 'w-full py-3 bg-gray-300 text-white rounded-lg font-medium cursor-not-allowed';
+        }
+    },
+
+    _resetQuestionImportStages() {
+        const nameEl = document.getElementById('question-import-file-name');
+        if (nameEl) nameEl.textContent = '尚未选择图片';
+        const errorEl = document.getElementById('question-import-error');
+        if (errorEl) errorEl.classList.add('hidden');
+        const submit = document.getElementById('question-import-submit');
+        if (submit) {
+            submit.disabled = true;
+            submit.textContent = '上传并生成预览';
+            submit.className = 'w-full py-3 bg-gray-300 text-white rounded-lg font-medium cursor-not-allowed';
+        }
+        ['upload', 'ocr', 'llm'].forEach(stage => {
+            const el = document.getElementById(`import-stage-${stage}`);
+            if (!el) return;
+            el.className = 'flex items-center gap-2 text-sm';
+            el.querySelector('.stage-icon').textContent = '○';
+            el.querySelector('.stage-detail').textContent = '';
+        });
+    },
+
+    _setQuestionImportStage(stage, state, detail = '') {
+        const el = document.getElementById(`import-stage-${stage}`);
+        if (!el) return;
+        const colors = { active: 'text-blue-600', done: 'text-green-600', error: 'text-red-600' };
+        el.className = `flex items-center gap-2 text-sm ${colors[state] || ''}`;
+        el.querySelector('.stage-icon').textContent = state === 'done' ? '✓' : state === 'error' ? '!' : '…';
+        el.querySelector('.stage-detail').textContent = detail;
+    },
+
+    async submitQuestionImport() {
+        if (this._questionImportBusy) return;
+        if (this._pendingQuestionImportPreview) {
+            this.openQuestionReview(this._pendingQuestionImportPreview);
+            return;
+        }
+        const file = this._questionImportFile;
+        const grade = document.getElementById('teacher-import-grade')?.value;
+        const semester = document.getElementById('teacher-import-semester')?.value || '';
+        const teacherId = MockData.currentUser?.id;
+        if (!file) return this._showQuestionImportError('请先选择标准答案图片。');
+        if (!grade) return this._showQuestionImportError('请选择题目适用年级。');
+        if (!teacherId) return this._showQuestionImportError('未识别当前教师账号，请重新登录。');
+
+        this._questionImportBusy = true;
+        const submit = document.getElementById('question-import-submit');
+        if (submit) {
+            submit.disabled = true;
+            submit.textContent = '正在生成预览...';
+            submit.className = 'w-full py-3 bg-blue-500 text-white rounded-lg font-medium cursor-wait';
+        }
+        this._setQuestionImportStage('upload', 'active', '正在上传');
+        this._setQuestionImportStage('ocr', 'active', '等待识别');
+        this._setQuestionImportStage('llm', 'active', '等待复核');
+        try {
+            const preview = await Api.uploadTeacherQuestionImportPreview(file, teacherId, Number(grade), semester);
+            this._setQuestionImportStage('upload', 'done', '已完成');
+            this._setQuestionImportStage('ocr', 'done', `${preview.items?.length || 0} 道题`);
+            this._setQuestionImportStage('llm', 'done', '预览已生成');
+            this._questionImportFile = null;
+            this._questionImportBusy = false;
+            if (submit) {
+                submit.textContent = '进入复核';
+                submit.disabled = false;
+                submit.className = 'w-full py-3 bg-green-600 text-white rounded-lg font-medium';
+            }
+            this._pendingQuestionImportPreview = preview;
+        } catch (error) {
+            this._questionImportBusy = false;
+            this._setQuestionImportStage('upload', 'error', '失败');
+            this._setQuestionImportStage('ocr', 'error', '未完成');
+            this._setQuestionImportStage('llm', 'error', '未完成');
+            this._showQuestionImportError(error.message || '上传失败，请稍后重试。', false);
+            if (submit) {
+                submit.disabled = false;
+                submit.textContent = '重新生成预览';
+                submit.className = 'w-full py-3 bg-green-600 text-white rounded-lg font-medium';
+            }
+        }
+    },
+
+    openQuestionReview(preview) {
+        // C2 will replace this handoff with the editable question review screen.
+        this.closeQuestionImport();
+        this._pendingQuestionImportPreview = preview;
+        this.showQuestionImportNotice(`已识别 ${preview.items?.length || 0} 道题，下一步进入逐题复核。`);
+    },
+
+    showQuestionImportNotice(message) {
+        if (typeof App?.showModal === 'function') App.showModal('题目录入预览', `<div class="text-sm text-gray-700">${message}</div>`);
     },
 
     async showCreateBatchModal() {

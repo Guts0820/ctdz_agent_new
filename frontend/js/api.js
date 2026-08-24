@@ -28,6 +28,32 @@ const Api = {
         }
     },
 
+    async uploadTeacherQuestionImportPreview(file, teacherId, grade, semester = '') {
+        const formData = new FormData();
+        formData.append('image', file, file.name || 'teacher-question-import');
+        formData.append('teacher_id', teacherId);
+        formData.append('grade', String(grade));
+        if (semester) formData.append('semester', semester);
+
+        const response = await fetch(API_BASE + '/v1/teacher/question-imports/preview', {
+            method: 'POST',
+            body: formData
+        });
+        if (!response.ok) {
+            let detail = '';
+            try {
+                const errorBody = await response.json();
+                detail = errorBody && (errorBody.detail || errorBody.message)
+                    ? ': ' + (errorBody.detail || errorBody.message)
+                    : '';
+            } catch (_) {
+                // Keep the HTTP status when the service does not return JSON.
+            }
+            throw new Error('API请求失败: ' + response.status + detail);
+        }
+        return response.json();
+    },
+
     async getStudents(grade, className) {
         let params = [];
         if (grade) params.push('grade=' + grade);
