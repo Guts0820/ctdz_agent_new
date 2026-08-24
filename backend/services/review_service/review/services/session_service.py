@@ -2,6 +2,7 @@ from datetime import datetime
 
 import requests
 
+from backend.shared.observability import log_event
 from backend.services.review_service.review.domain.enums import AnalysisStatus, ItemStatus, PlanStatus
 from backend.services.review_service.review.repositories import AttemptRecord, Neo4jRepository, SessionRecord
 from backend.services.review_service.review.schemas.priority import MasteryUpdateRequest
@@ -236,6 +237,11 @@ class SessionService:
         )
         self.repository.save_attempt(attempt)
         item.status = ItemStatus.COMPLETED
+        self._refresh_mastery_after_review_attempt(
+            session.student_id,
+            question,
+            attempt.is_correct,
+        )
 
         print("[DEBUG] 即将调用 _record_attempt_to_neo4j")
         self._record_attempt_to_neo4j(
@@ -338,6 +344,13 @@ class SessionService:
 
     def _refresh_mastery_after_correction(self, student_id: str, question, is_correct: bool) -> None:
         """Apply persisted correction evidence to every knowledge point on the question."""
+        self._refresh_mastery_after_evidence(student_id, question, is_correct, "correction")
+
+    def _refresh_mastery_after_review_attempt(self, student_id: str, question, is_correct: bool) -> None:
+        """Refresh the SQLite read model after each persisted Review2 attempt."""
+        self._refresh_mastery_after_evidence(student_id, question, is_correct, "review_attempt")
+
+    def _refresh_mastery_after_evidence(self, student_id: str, question, is_correct: bool, source: str) -> None:
         for knowledge in question.knowledge:
             try:
                 self.plan_service.priority_service.update_mastery(MasteryUpdateRequest(
@@ -346,7 +359,13 @@ class SessionService:
                     is_correct=is_correct,
                 ))
             except Exception as error:
-                print(f"[review] 订正后掌握度刷新失败 ({knowledge.knowledge_point_id}): {error}")
+                log_event(
+                    "review.mastery_refresh_failed",
+                    student_id=student_id,
+                    knowledge_id=knowledge.knowledge_point_id,
+                    source=source,
+                    error_type=type(error).__name__,
+                )
 
     def _get(self, session_id: str) -> SessionRecord:
         session = self.repository.get_session(session_id)

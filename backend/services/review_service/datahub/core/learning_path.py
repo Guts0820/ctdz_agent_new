@@ -7,6 +7,7 @@ from typing import List, Dict, Optional
 sys.path.append('.')
 
 from backend.shared.config import DATABASE_PATH
+from backend.shared.observability import log_event
 from ..models import LearningPathNode
 from backend.shared.neo4j_connection import neo4j_conn
 
@@ -61,13 +62,15 @@ class LearningPathRecommender:
             pending_mastery_ids = set()
 
         if not rows:
-            return {
+            response = {
                 "student_id": normalized_student_id,
                 "generated_at": datetime.now().isoformat(),
                 "source": "mastery_priority_v1",
                 "data": [],
                 "empty_state": "暂无足够的学习记录，完成一次作答后将生成个性化学习路径。",
             }
+            self._log_generation(normalized_student_id, 0, 0, "no_mastery_records", None)
+            return response
 
         states = {
             str(row["knowledge_id"]): {
@@ -80,7 +83,7 @@ class LearningPathRecommender:
             for row in rows
             if row["knowledge_id"]
         }
-        details = self._get_contract_knowledge_details(list(states))
+        details, graph_degradation_reason = self._get_contract_knowledge_details(list(states))
         selected_ids = self._select_contract_path_ids(states, details, limit)
         prerequisite_ids = {
             str(prerequisite.get("knowledge_id"))
@@ -97,13 +100,40 @@ class LearningPathRecommender:
             )
             for sequence, knowledge_id in enumerate(selected_ids, start=1)
         ]
-        return {
+        response = {
             "student_id": normalized_student_id,
             "generated_at": datetime.now().isoformat(),
             "source": "mastery_priority_v1",
             "data": data,
             "empty_state": None,
         }
+        self._log_generation(
+            normalized_student_id,
+            len(states),
+            len(data),
+            None,
+            graph_degradation_reason,
+        )
+        return response
+
+    @staticmethod
+    def _log_generation(
+        student_id: str,
+        candidate_count: int,
+        selected_count: int,
+        empty_reason: Optional[str],
+        graph_degradation_reason: Optional[str],
+    ) -> None:
+        """Record path metadata only; question and answer content must not enter logs."""
+        log_event(
+            "learning_path.generated",
+            student_id=student_id,
+            path_version="mastery_priority_v1",
+            candidate_count=candidate_count,
+            selected_count=selected_count,
+            empty_reason=empty_reason,
+            graph_degradation_reason=graph_degradation_reason,
+        )
 
     def _select_contract_path_ids(self, states: Dict[str, Dict], details: Dict[str, Dict], limit: int) -> List[str]:
         """Prefer pending reviews and weak knowledge while putting known prerequisites first."""
@@ -156,7 +186,7 @@ class LearningPathRecommender:
             "next_action": "start_review",
         }
 
-    def _get_contract_knowledge_details(self, knowledge_ids: List[str]) -> Dict[str, Dict]:
+    def _get_contract_knowledge_details(self, knowledge_ids: List[str]) -> tuple[Dict[str, Dict], Optional[str]]:
         try:
             rows = neo4j_conn.query(
                 """MATCH (kp:KnowledgePoint)
@@ -169,7 +199,7 @@ class LearningPathRecommender:
                 {"knowledge_ids": knowledge_ids},
             )
         except Exception:
-            rows = []
+            return {}, "neo4j_unavailable"
         return {
             str(row["knowledge_id"]): {
                 "title": row.get("title") or "",
@@ -177,7 +207,7 @@ class LearningPathRecommender:
             }
             for row in rows
             if row.get("knowledge_id")
-        }
+        }, None
     
     def _get_weak_knowledge_from_neo4j(self, student_id: int) -> List[Dict]:
         formatted_id = self._format_student_id(student_id)

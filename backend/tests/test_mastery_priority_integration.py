@@ -3,8 +3,9 @@ from datetime import date, datetime
 from types import SimpleNamespace
 
 from backend.services.review_service.review.repositories import Neo4jRepository
-from backend.services.review_service.review.domain.enums import Difficulty
+from backend.services.review_service.review.domain.enums import Difficulty, ItemStatus, PlanStatus
 from backend.services.review_service.review.schemas.priority import KnowledgeStateInput, MasteryUpdateRequest, PracticeEvidence
+from backend.services.review_service.review.schemas.review import SubmitAttemptRequest
 from backend.services.review_service.review.services.priority_calculator import PriorityCalculator
 from backend.services.review_service.review.services.priority_service import PriorityService
 from backend.services.review_service.review.services.session_service import SessionService
@@ -162,3 +163,57 @@ def test_correction_immediately_refreshes_all_related_knowledge_points():
         ("K1", True),
         ("K2", True),
     ]
+
+
+def test_review_attempt_immediately_refreshes_all_related_knowledge_points():
+    requests = []
+    service = SessionService.__new__(SessionService)
+    service.plan_service = SimpleNamespace(
+        priority_service=SimpleNamespace(update_mastery=requests.append)
+    )
+    question = SimpleNamespace(knowledge=[
+        SimpleNamespace(knowledge_point_id="K1"),
+        SimpleNamespace(knowledge_point_id="K2"),
+    ])
+
+    service._refresh_mastery_after_review_attempt("S1", question, False)
+
+    assert [(item.knowledge_id, item.is_correct) for item in requests] == [
+        ("K1", False),
+        ("K2", False),
+    ]
+
+
+def test_session_submit_refreshes_mastery_after_persisting_review_evidence():
+    events = []
+    session = SimpleNamespace(
+        id="RS1", plan_id="RP1", student_id="S1", status=PlanStatus.IN_PROGRESS,
+        current_position=0, elapsed_seconds=0, resumed_at=datetime(2026, 8, 20, 12),
+    )
+    item = SimpleNamespace(position=0, question_id="Q1", status=ItemStatus.CURRENT)
+    plan = SimpleNamespace(id="RP1", items=[item], status=PlanStatus.IN_PROGRESS)
+    question = SimpleNamespace(
+        id="Q1", question_type="choice", options=["2"], correct_option=0,
+        knowledge=[SimpleNamespace(knowledge_point_id="K1")],
+    )
+    repository = SimpleNamespace(
+        now=lambda: datetime(2026, 8, 20, 12),
+        new_id=lambda _prefix: "RA1",
+        get_attempts_for_session=lambda _session_id: [],
+        get_question=lambda _question_id: question,
+        save_attempt=lambda _attempt: events.append("attempt_saved"),
+        save_session=lambda _session: events.append("session_saved"),
+        save_plan=lambda _plan: events.append("plan_saved"),
+    )
+    priority_service = SimpleNamespace(
+        update_mastery=lambda request: events.append(("mastery_refreshed", request.knowledge_id, request.is_correct))
+    )
+    service = SessionService(repository, SimpleNamespace(get=lambda _plan_id: plan, priority_service=priority_service))
+    service._get = lambda _session_id: session
+    service._elapsed = lambda _session: 1
+    service._record_attempt_to_neo4j = lambda *_args: None
+
+    response = service.submit("RS1", SubmitAttemptRequest(question_id="Q1", selected_option=0))
+
+    assert response.session_completed is True
+    assert events[:2] == ["attempt_saved", ("mastery_refreshed", "K1", True)]

@@ -57,6 +57,33 @@ def test_learning_path_returns_empty_state_without_mastery_records(tmp_path, mon
     assert response["empty_state"]
 
 
+def test_learning_path_logs_generation_metadata_without_learning_content(tmp_path, monkeypatch):
+    database = tmp_path / "learning-path-observability.db"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """CREATE TABLE knowledge_mastery (
+                knowledge_mastery_id TEXT, student_id TEXT, knowledge_id TEXT,
+                master_level REAL, priority REAL, correct_count INT, wrong_count INT
+            )"""
+        )
+        connection.execute("INSERT INTO knowledge_mastery VALUES ('KM1', 'S001', 'K001', 0.4, 80, 1, 3)")
+    events = []
+    monkeypatch.setattr(learning_path, "DATABASE_PATH", str(database))
+    monkeypatch.setattr(learning_path.neo4j_conn, "query", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError()))
+    monkeypatch.setattr(learning_path, "log_event", lambda event, **fields: events.append((event, fields)))
+
+    learning_path.LearningPathRecommender().generate_contract_path("S001")
+
+    assert events == [("learning_path.generated", {
+        "student_id": "S001",
+        "path_version": "mastery_priority_v1",
+        "candidate_count": 1,
+        "selected_count": 1,
+        "empty_reason": None,
+        "graph_degradation_reason": "neo4j_unavailable",
+    })]
+
+
 def test_learning_path_prioritizes_pending_review_and_known_prerequisites(tmp_path, monkeypatch):
     database = tmp_path / "learning-path-order.db"
     with sqlite3.connect(database) as connection:
