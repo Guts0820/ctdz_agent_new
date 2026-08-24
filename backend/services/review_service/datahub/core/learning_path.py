@@ -30,59 +30,130 @@ class LearningPathRecommender:
         return normalize_student_id(student_id)
 
     def generate_contract_path(self, student_id: str | int, limit: int = 5) -> dict:
-        """Return the stable public contract using the SQLite mastery read model."""
+        """Return an actionable path from real mastery and pending-review data."""
         normalized_student_id = normalize_student_id(student_id)
         limit = max(1, min(int(limit), 20))
         try:
             with sqlite3.connect(DATABASE_PATH) as connection:
                 connection.row_factory = sqlite3.Row
                 rows = connection.execute(
-                    """SELECT knowledge_id, master_level, COALESCE(priority, 0) AS priority
+                    """SELECT knowledge_mastery_id, knowledge_id, master_level,
+                              COALESCE(priority, 0) AS priority,
+                              COALESCE(correct_count, 0) AS correct_count,
+                              COALESCE(wrong_count, 0) AS wrong_count
                        FROM knowledge_mastery
                        WHERE student_id = ?
-                       ORDER BY priority DESC, master_level ASC, knowledge_id ASC
-                       LIMIT ?""",
-                    (normalized_student_id, limit),
+                       ORDER BY priority DESC, master_level ASC, knowledge_id ASC""",
+                    (normalized_student_id,),
                 ).fetchall()
+                try:
+                    pending_mastery_ids = {
+                        str(row["knowledge_mastery_id"])
+                        for row in connection.execute(
+                            """SELECT knowledge_mastery_id FROM review_plan
+                               WHERE status IN ('pending', 'in_progress')"""
+                        ).fetchall()
+                    }
+                except sqlite3.Error:
+                    pending_mastery_ids = set()
         except sqlite3.Error:
             rows = []
+            pending_mastery_ids = set()
 
         if not rows:
             return {
                 "student_id": normalized_student_id,
                 "generated_at": datetime.now().isoformat(),
-                "source": "sqlite_mastery_v1",
+                "source": "mastery_priority_v1",
                 "data": [],
                 "empty_state": "暂无足够的学习记录，完成一次作答后将生成个性化学习路径。",
             }
 
-        knowledge_ids = [str(row["knowledge_id"]) for row in rows]
-        details = self._get_contract_knowledge_details(knowledge_ids)
-        data = []
-        for sequence, row in enumerate(rows, start=1):
-            knowledge_id = str(row["knowledge_id"])
-            mastery_level = max(0.0, min(float(row["master_level"] or 0) * 100, 100.0))
-            priority = max(0.0, float(row["priority"] or 0))
-            detail = details.get(knowledge_id, {})
-            stage = "remedial" if mastery_level < 60 else "consolidation"
-            data.append({
-                "knowledge_id": knowledge_id,
-                "title": detail.get("title") or knowledge_id,
-                "sequence": sequence,
-                "stage": stage,
-                "mastery_level": round(mastery_level, 1),
-                "priority": round(priority, 2),
-                "reason": "当前掌握度较低，需要优先巩固。" if stage == "remedial" else "建议通过复习巩固当前知识点。",
-                "prerequisites": detail.get("prerequisites", []),
-                "estimated_minutes": 20 if stage == "remedial" else 15,
-                "next_action": "start_review",
-            })
+        states = {
+            str(row["knowledge_id"]): {
+                "knowledge_id": str(row["knowledge_id"]),
+                "mastery_level": max(0.0, min(float(row["master_level"] or 0) * 100, 100.0)),
+                "priority": max(0.0, float(row["priority"] or 0)),
+                "wrong_count": max(0, int(row["wrong_count"] or 0)),
+                "pending_review": str(row["knowledge_mastery_id"]) in pending_mastery_ids,
+            }
+            for row in rows
+            if row["knowledge_id"]
+        }
+        details = self._get_contract_knowledge_details(list(states))
+        selected_ids = self._select_contract_path_ids(states, details, limit)
+        prerequisite_ids = {
+            str(prerequisite.get("knowledge_id"))
+            for knowledge_id in selected_ids
+            for prerequisite in details.get(knowledge_id, {}).get("prerequisites", [])
+            if str(prerequisite.get("knowledge_id") or "") in selected_ids
+        }
+        data = [
+            self._contract_node(
+                states[knowledge_id],
+                details.get(knowledge_id, {}),
+                sequence,
+                knowledge_id in prerequisite_ids,
+            )
+            for sequence, knowledge_id in enumerate(selected_ids, start=1)
+        ]
         return {
             "student_id": normalized_student_id,
             "generated_at": datetime.now().isoformat(),
-            "source": "sqlite_mastery_v1",
+            "source": "mastery_priority_v1",
             "data": data,
             "empty_state": None,
+        }
+
+    def _select_contract_path_ids(self, states: Dict[str, Dict], details: Dict[str, Dict], limit: int) -> List[str]:
+        """Prefer pending reviews and weak knowledge while putting known prerequisites first."""
+        def score(state: Dict) -> tuple:
+            category = 0 if state["pending_review"] else 1 if state["mastery_level"] < 60 else 2 if state["mastery_level"] < 80 else 3
+            return (category, -state["priority"], -state["wrong_count"], state["mastery_level"], state["knowledge_id"])
+
+        selected = []
+        for target in sorted(states.values(), key=score):
+            target_id = target["knowledge_id"]
+            for prerequisite in details.get(target_id, {}).get("prerequisites", []):
+                prerequisite_id = str(prerequisite.get("knowledge_id") or "")
+                prerequisite_state = states.get(prerequisite_id)
+                if prerequisite_state and prerequisite_state["mastery_level"] < 80 and prerequisite_id not in selected:
+                    selected.append(prerequisite_id)
+                    if len(selected) >= limit:
+                        return selected
+            if target_id not in selected:
+                selected.append(target_id)
+                if len(selected) >= limit:
+                    return selected
+        return selected
+
+    def _contract_node(self, state: Dict, detail: Dict, sequence: int, is_prerequisite: bool) -> Dict:
+        mastery_level = state["mastery_level"]
+        if mastery_level < 60:
+            stage, estimated_minutes = "remedial", 20
+            reason = "当前掌握度较低，需要优先巩固。"
+        elif mastery_level < 80:
+            stage, estimated_minutes = "consolidation", 15
+            reason = "掌握度仍需巩固，建议完成针对性练习。"
+        else:
+            stage, estimated_minutes = "extension", 10
+            reason = "已具备基础掌握度，可通过复习保持熟练。"
+        if is_prerequisite:
+            stage, estimated_minutes = "prerequisite", 15
+            reason = "这是后续薄弱知识点的前置基础，建议先完成。"
+        if state["pending_review"]:
+            reason = "存在待完成复习计划，建议优先完成。"
+        return {
+            "knowledge_id": state["knowledge_id"],
+            "title": detail.get("title") or state["knowledge_id"],
+            "sequence": sequence,
+            "stage": stage,
+            "mastery_level": round(mastery_level, 1),
+            "priority": round(state["priority"], 2),
+            "reason": reason,
+            "prerequisites": detail.get("prerequisites", []),
+            "estimated_minutes": estimated_minutes,
+            "next_action": "start_review",
         }
 
     def _get_contract_knowledge_details(self, knowledge_ids: List[str]) -> Dict[str, Dict]:
