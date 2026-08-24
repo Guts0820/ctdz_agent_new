@@ -136,6 +136,26 @@ def test_wrong_correction_remains_open_and_can_be_retried(correction_database, m
     assert retry.submit_count == 3
 
 
+def test_wrong_answer_list_collapses_legacy_duplicate_cases(correction_database):
+    with _connect(correction_database) as connection:
+        connection.execute(
+            "INSERT INTO mistake_case VALUES ('MC2', 'S1', 'Q1', 'correcting', '2026-08-21T09:00:00')"
+        )
+        connection.execute(
+            """INSERT INTO answer_history
+               (answer_history_id, student_id, question_id, mistake_case_id,
+                submit_type, submit_count, ocr_question, student_ocr_answer,
+                core_error_type, is_correct, submitted_at)
+               VALUES ('AH-DUP', 'S1', 'Q1', 'MC2', '首次错题', 1,
+                       '25+38等于多少？', '52', '计算错误', 0, '2026-08-21T09:00:00')"""
+        )
+        connection.commit()
+
+    result = statistics.get_wrong_answers("S1")
+    assert result["total"] == 1
+    assert len(result["data"]) == 1
+
+
 def test_completed_mistake_rejects_duplicate_correction(correction_database):
     with _connect(correction_database) as connection:
         connection.execute("UPDATE mistake_case SET current_status='corrected' WHERE mistake_case_id='MC1'")

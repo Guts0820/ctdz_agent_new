@@ -79,12 +79,26 @@ def _ensure_mistake_case(student_id: str, question_id: Optional[str], answer_his
     """Keep an unmatched wrong answer in the mistake book without inventing a cause."""
     from backend.shared.id_utils import generate_id
 
-    mistake_case_id = generate_id("MC")
     with _get_db() as connection:
-        connection.execute(
-            "INSERT INTO mistake_case (mistake_case_id, student_id, question_id, current_status) VALUES (?, ?, ?, ?)",
-            (mistake_case_id, student_id, question_id, "correcting"),
-        )
+        existing = None
+        if question_id:
+            existing = connection.execute(
+                """SELECT mistake_case_id FROM mistake_case
+                   WHERE student_id = ? AND question_id = ?
+                   ORDER BY created_at ASC LIMIT 1""",
+                (student_id, question_id),
+            ).fetchone()
+        mistake_case_id = existing["mistake_case_id"] if existing else generate_id("MC")
+        if existing:
+            connection.execute(
+                "UPDATE mistake_case SET current_status = 'correcting' WHERE mistake_case_id = ?",
+                (mistake_case_id,),
+            )
+        else:
+            connection.execute(
+                "INSERT INTO mistake_case (mistake_case_id, student_id, question_id, current_status) VALUES (?, ?, ?, ?)",
+                (mistake_case_id, student_id, question_id, "correcting"),
+            )
         if answer_history_id:
             connection.execute(
                 "UPDATE answer_history SET mistake_case_id = ? WHERE answer_history_id = ?",

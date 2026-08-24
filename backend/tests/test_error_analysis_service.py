@@ -139,6 +139,7 @@ def test_error_analysis_links_answer_history_and_mistake_case(monkeypatch, tmp_p
             CREATE TABLE mistake_case_error (mistake_case_id TEXT, error_id TEXT, error_weight REAL);
             CREATE TABLE mistake_case_knowledge (mistake_case_id TEXT, knowledge_id TEXT, knowledge_weight REAL);
             INSERT INTO answer_history (answer_history_id) VALUES ('AH001');
+            INSERT INTO answer_history (answer_history_id) VALUES ('AH002');
             """
         )
     monkeypatch.setattr(service, "DATABASE", str(database))
@@ -157,3 +158,18 @@ def test_error_analysis_links_answer_history_and_mistake_case(monkeypatch, tmp_p
     assert json.loads(history[1])[0]["error_id"] == "C-001"
     assert history[2] == "遗漏进位"
     assert teaching_link[0] == "K035"
+
+    second = service.analyze_error(service.ErrorAnalysisRequest(
+        student_id="S001", question_id="Q001", answer_history_id="AH002", original_question="25+38",
+        student_write="52", judge_result="wrong", core_error_type="计算错误", step_feedback="漏加进位",
+    ))
+    with sqlite3.connect(database) as connection:
+        case_count = connection.execute(
+            "SELECT COUNT(*) FROM mistake_case WHERE student_id='S001' AND question_id='Q001'"
+        ).fetchone()[0]
+        linked_case = connection.execute(
+            "SELECT mistake_case_id FROM answer_history WHERE answer_history_id='AH002'"
+        ).fetchone()[0]
+    assert second.mistake_case_id == response.mistake_case_id
+    assert linked_case == response.mistake_case_id
+    assert case_count == 1

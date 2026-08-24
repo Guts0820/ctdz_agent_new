@@ -28,11 +28,21 @@ def get_student_stats(student_id: str) -> dict:
         total = connection.execute("SELECT COUNT(*) AS total FROM answer_history WHERE student_id = ?", (student_id,)).fetchone()["total"]
         correct = connection.execute("SELECT COUNT(*) AS total FROM answer_history WHERE student_id = ? AND is_correct = 1", (student_id,)).fetchone()["total"]
         wrong = connection.execute(
-            "SELECT COUNT(*) AS total FROM mistake_case WHERE student_id = ?",
+            """SELECT COUNT(*) AS total FROM (
+                   SELECT question_id FROM mistake_case
+                   WHERE student_id = ?
+                   GROUP BY question_id
+               )""",
             (student_id,),
         ).fetchone()["total"]
         reviewed = connection.execute(
-            "SELECT COUNT(*) AS total FROM mistake_case WHERE student_id = ? AND current_status = 'corrected'",
+            """SELECT COUNT(*) AS total FROM (
+                   SELECT question_id
+                   FROM mistake_case
+                   WHERE student_id = ?
+                   GROUP BY question_id
+                   HAVING MAX(CASE WHEN current_status = 'corrected' THEN 1 ELSE 0 END) = 1
+               )""",
             (student_id,),
         ).fetchone()["total"]
     return {"total_questions": total, "correct_rate": round(correct / total * 100) if total else 0, "total_mistakes": wrong, "reviewed_mistakes": reviewed}
@@ -41,7 +51,18 @@ def get_student_stats(student_id: str) -> dict:
 def get_wrong_answers(student_id: str) -> dict:
     with get_gateway_db() as connection:
         rows = connection.execute(
-            """SELECT mc.mistake_case_id, mc.question_id, mc.current_status, mc.created_at,
+            """WITH ranked_cases AS (
+                   SELECT mc.*,
+                          ROW_NUMBER() OVER (
+                              PARTITION BY mc.student_id, mc.question_id
+                              ORDER BY CASE WHEN mc.current_status = 'correcting' THEN 0 ELSE 1 END,
+                                       mc.created_at ASC,
+                                       mc.mistake_case_id ASC
+                          ) AS case_rank
+                   FROM mistake_case mc
+                   WHERE mc.student_id = ?
+               )
+               SELECT mc.mistake_case_id, mc.question_id, mc.current_status, mc.created_at,
                       COALESCE(initial.student_ocr_answer, question_history.student_ocr_answer) AS student_ocr_answer,
                       COALESCE(initial.core_error_type, question_history.core_error_type) AS core_error_type,
                       COALESCE(initial.ocr_question, question_history.ocr_question) AS ocr_question,
@@ -57,7 +78,7 @@ def get_wrong_answers(student_id: str) -> dict:
                        WHERE latest.mistake_case_id = mc.mistake_case_id
                          AND latest.submit_type = '错题订正'
                        ORDER BY latest.submitted_at DESC LIMIT 1) AS corrected_at
-               FROM mistake_case mc
+               FROM ranked_cases mc
                LEFT JOIN answer_history initial ON initial.answer_history_id = (
                    SELECT ah.answer_history_id FROM answer_history ah
                    WHERE ah.mistake_case_id = mc.mistake_case_id
@@ -69,7 +90,7 @@ def get_wrong_answers(student_id: str) -> dict:
                    WHERE qh.student_id = mc.student_id AND qh.question_id = mc.question_id
                    ORDER BY qh.submitted_at DESC LIMIT 1
                )
-               WHERE mc.student_id = ? ORDER BY mc.created_at DESC""",
+               WHERE mc.case_rank = 1 ORDER BY mc.created_at DESC""",
             (student_id,),
         ).fetchall()
     data = [{

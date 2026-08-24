@@ -531,21 +531,38 @@ def analyze_error(request: ErrorAnalysisRequest):
                 if row:
                     question_id = row["question_id"]
 
-            mistake_case_id = generate_id("MC")
-            cursor.execute('''
-                INSERT INTO mistake_case (mistake_case_id, student_id, question_id, current_status, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (mistake_case_id, request.student_id, question_id, "correcting", datetime.now().isoformat()))
+            existing_case = None
+            if question_id:
+                existing_case = cursor.execute(
+                    """SELECT mistake_case_id FROM mistake_case
+                       WHERE student_id = ? AND question_id = ?
+                       ORDER BY created_at ASC LIMIT 1""",
+                    (request.student_id, question_id),
+                ).fetchone()
+            if existing_case:
+                mistake_case_id = existing_case["mistake_case_id"]
+                # A new wrong submission reopens the single case when a prior
+                # correction had marked it as completed.
+                cursor.execute(
+                    "UPDATE mistake_case SET current_status = 'correcting' WHERE mistake_case_id = ?",
+                    (mistake_case_id,),
+                )
+            else:
+                mistake_case_id = generate_id("MC")
+                cursor.execute('''
+                    INSERT INTO mistake_case (mistake_case_id, student_id, question_id, current_status, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (mistake_case_id, request.student_id, question_id, "correcting", datetime.now().isoformat()))
 
             for tag in error_tags:
                 cursor.execute('''
-                    INSERT INTO mistake_case_error (mistake_case_id, error_id, error_weight)
+                    INSERT OR REPLACE INTO mistake_case_error (mistake_case_id, error_id, error_weight)
                     VALUES (?, ?, ?)
                 ''', (mistake_case_id, tag.error_id, tag.confidence))
 
             if knowledge_info["id"]:
                 cursor.execute('''
-                    INSERT INTO mistake_case_knowledge (mistake_case_id, knowledge_id, knowledge_weight)
+                    INSERT OR REPLACE INTO mistake_case_knowledge (mistake_case_id, knowledge_id, knowledge_weight)
                     VALUES (?, ?, ?)
                 ''', (mistake_case_id, knowledge_info["id"], 1.0))
 
