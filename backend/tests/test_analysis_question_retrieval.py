@@ -28,6 +28,36 @@ def test_analysis_accepts_a_high_confidence_llm_reranked_graph_candidate(monkeyp
     assert match["match_confidence"] == 0.98
 
 
+def test_analysis_accepts_normalized_exact_candidate_without_llm_rerank(monkeypatch) -> None:
+    from backend.services.analysis_service import question_retrieval
+
+    candidate = {
+        "id": "TQ0911EFCEE4F0",
+        "text": "0.8 × 0.02 =",
+        "answer": "0.016",
+        "answer_steps": "8×2=16，小数点共三位。",
+        "match_type": "vector",
+        "retrieval_score": 1.0,
+    }
+    monkeypatch.setattr(question_retrieval, "retrieve_question_candidates", lambda text: [candidate])
+
+    monkeypatch.setattr(
+        question_retrieval,
+        "rerank_question_candidates",
+        lambda **_kwargs: {
+            "question_id": None,
+            "confidence": 0.0,
+            "runner_up_confidence": 0.0,
+            "reason": "LLM无法判断",
+        },
+    )
+    match = question_retrieval.resolve_question_reference("０．８×０．０２＝")
+
+    assert match is not None
+    assert match["question_id"] == "TQ0911EFCEE4F0"
+    assert match["match_confidence"] == 1.0
+
+
 def test_analysis_rejects_an_ambiguous_reranked_candidate(monkeypatch) -> None:
     from backend.services.analysis_service import question_retrieval
 

@@ -1,6 +1,8 @@
 """Question retrieval orchestration for OCR-only submissions."""
 
 import os
+import re
+import unicodedata
 from typing import Any, Optional
 
 import requests
@@ -14,6 +16,11 @@ def _float_setting(name: str, default: float) -> float:
         return float(os.getenv(name, str(default)).strip())
     except (TypeError, ValueError):
         return default
+
+
+def _normalize_question_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKC", str(text or "")).lower()
+    return re.sub(r"[^\w\u4e00-\u9fff]+", "", normalized, flags=re.UNICODE)
 
 
 def retrieve_question_candidates(
@@ -62,6 +69,31 @@ def resolve_question_reference(
         candidates = retrieve_question_candidates(question_text)
     if not candidates:
         return None
+
+    # A normalized exact match is deterministic: punctuation/spacing/full-width
+    # OCR differences have already been resolved by the graph candidate search.
+    # Do not let an unavailable or conservative LLM reranker turn this safe match
+    # into an unknown-question rejection.
+    exact = next(
+        (
+            candidate
+            for candidate in candidates
+            if candidate.get("id") and (
+                candidate.get("match_type") == "normalized_exact"
+                or _normalize_question_text(candidate.get("text", ""))
+                == _normalize_question_text(question_text)
+            )
+        ),
+        None,
+    )
+    if exact is not None:
+        return _build_match(
+            exact,
+            {
+                "confidence": 1.0,
+                "reason": "题干规范化后完全匹配。",
+            },
+        )
 
     try:
         rerank = rerank_question_candidates(question=question_text, candidates=candidates)
