@@ -31,7 +31,7 @@ def get_student_stats(student_id: str) -> dict:
             """SELECT COUNT(*) AS total FROM (
                    SELECT question_id FROM mistake_case
                    WHERE student_id = ?
-                   GROUP BY question_id
+                   GROUP BY CASE WHEN question_id IS NULL THEN mistake_case_id ELSE question_id END
                )""",
             (student_id,),
         ).fetchone()["total"]
@@ -40,7 +40,7 @@ def get_student_stats(student_id: str) -> dict:
                    SELECT question_id
                    FROM mistake_case
                    WHERE student_id = ?
-                   GROUP BY question_id
+                   GROUP BY CASE WHEN question_id IS NULL THEN mistake_case_id ELSE question_id END
                    HAVING MAX(CASE WHEN current_status = 'corrected' THEN 1 ELSE 0 END) = 1
                )""",
             (student_id,),
@@ -54,7 +54,8 @@ def get_wrong_answers(student_id: str) -> dict:
             """WITH ranked_cases AS (
                    SELECT mc.*,
                           ROW_NUMBER() OVER (
-                              PARTITION BY mc.student_id, mc.question_id
+                              PARTITION BY mc.student_id,
+                                           CASE WHEN mc.question_id IS NULL THEN mc.mistake_case_id ELSE mc.question_id END
                               ORDER BY CASE WHEN mc.current_status = 'correcting' THEN 0 ELSE 1 END,
                                        mc.created_at ASC,
                                        mc.mistake_case_id ASC
