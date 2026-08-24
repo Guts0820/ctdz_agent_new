@@ -547,6 +547,27 @@ const TeacherPage = {
                 </div>
             </div>
 
+            <div id="question-review-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-5">
+                <div class="bg-gray-50 rounded-lg w-full max-w-4xl max-h-[94vh] overflow-hidden flex flex-col">
+                    <div class="bg-white px-4 py-3 border-b flex items-center justify-between gap-3">
+                        <div>
+                            <div class="font-bold text-lg text-gray-800">逐题复核与裁决</div>
+                            <div id="question-review-meta" class="text-xs text-gray-500 mt-1"></div>
+                        </div>
+                        <button type="button" onclick="TeacherPage.closeQuestionReview()" class="w-9 h-9 text-gray-500 hover:text-gray-800" title="关闭">×</button>
+                    </div>
+                    <div id="question-review-list" class="p-3 sm:p-4 space-y-3 overflow-y-auto"></div>
+                    <div class="bg-white border-t p-3 sm:p-4">
+                        <div id="question-review-error" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 mb-3" role="alert"></div>
+                        <div id="question-review-summary" class="hidden text-sm bg-green-50 border border-green-200 rounded p-3 mb-3" aria-live="polite"></div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="TeacherPage.closeQuestionReview()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded font-medium">稍后处理</button>
+                            <button id="question-review-submit" type="button" onclick="TeacherPage.confirmQuestionReview()" class="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium">检查确认内容</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             ${batches.length === 0 ? `
             <div class="bg-white rounded-2xl p-8 shadow-soft text-center text-gray-400">
                 <div class="text-4xl mb-2">📋</div>
@@ -613,6 +634,10 @@ const TeacherPage = {
     _questionImportFile: null,
     _questionImportBusy: false,
     _pendingQuestionImportPreview: null,
+    _questionReviewItems: [],
+    _questionReviewBusy: false,
+    _questionReviewReadyToConfirm: false,
+    _confirmedQuestionIds: [],
 
     async loadBatches() {
         try {
@@ -789,10 +814,229 @@ const TeacherPage = {
     },
 
     openQuestionReview(preview) {
-        // C2 will replace this handoff with the editable question review screen.
+        if (!preview?.import_id || !Array.isArray(preview.items) || preview.items.length === 0) {
+            this.showQuestionImportNotice('预览中没有可复核的题目，请重新上传清晰图片。');
+            return;
+        }
         this.closeQuestionImport();
         this._pendingQuestionImportPreview = preview;
-        this.showQuestionImportNotice(`已识别 ${preview.items?.length || 0} 道题，下一步进入逐题复核。`);
+        this._questionReviewItems = preview.items.map(item => {
+            const status = item.comparison_status;
+            let decision = null;
+            if (status === 'agreed') decision = item.existing_question_id ? 'existing' : 'teacher';
+            if (status === 'llm_failed') decision = 'teacher';
+            if (status === 'conflict' || status === 'uncertain') decision = null;
+            return {
+                ...item,
+                question_text: item.question_text || '',
+                teacher_answer: item.teacher_answer || '',
+                decision: decision
+            };
+        });
+        this._questionReviewBusy = false;
+        this._questionReviewReadyToConfirm = false;
+        this._renderQuestionReview();
+        const modal = document.getElementById('question-review-modal');
+        if (modal) modal.classList.remove('hidden');
+    },
+
+    closeQuestionReview() {
+        if (this._questionReviewBusy) return;
+        const modal = document.getElementById('question-review-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+
+    _escapeQuestionReview(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    },
+
+    _renderQuestionReview() {
+        const preview = this._pendingQuestionImportPreview || {};
+        const list = document.getElementById('question-review-list');
+        const meta = document.getElementById('question-review-meta');
+        if (meta) {
+            const semester = preview.semester ? ` · ${this._escapeQuestionReview(preview.semester)}` : '';
+            meta.innerHTML = `${preview.grade || '-'} 年级${semester} · ${this._questionReviewItems.length} 道题`;
+        }
+        if (!list) return;
+
+        const statusMap = {
+            agreed: { label: '答案一致', box: 'border-green-300', badge: 'bg-green-100 text-green-700' },
+            conflict: { label: '答案冲突', box: 'border-red-400', badge: 'bg-red-100 text-red-700' },
+            uncertain: { label: '需人工确认', box: 'border-amber-400', badge: 'bg-amber-100 text-amber-800' },
+            llm_failed: { label: 'LLM 复核失败', box: 'border-gray-400', badge: 'bg-gray-200 text-gray-700' }
+        };
+        list.innerHTML = this._questionReviewItems.map((item, index) => {
+            const status = statusMap[item.comparison_status] || statusMap.uncertain;
+            const llmDisabled = item.comparison_status === 'llm_failed' || !item.llm_answer;
+            const steps = Array.isArray(item.llm_solve_steps) ? item.llm_solve_steps : [];
+            const choice = (decision, label, disabled = false) => `
+                <label class="flex items-center gap-2 px-3 py-2 border rounded text-sm ${disabled ? 'text-gray-400 bg-gray-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}">
+                    <input type="radio" name="question-review-decision-${index}" value="${decision}"
+                        ${item.decision === decision ? 'checked' : ''} ${disabled ? 'disabled' : ''}
+                        onchange="TeacherPage.onQuestionReviewDecision(${index}, this.value)">
+                    <span>${label}</span>
+                </label>`;
+            return `
+                <section class="bg-white border ${status.box} rounded p-3 sm:p-4" data-item-id="${this._escapeQuestionReview(item.item_id)}">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <div class="font-medium text-gray-800">第 ${index + 1} 题</div>
+                        <span class="text-xs px-2 py-1 rounded ${status.badge}">${status.label}</span>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-3">
+                        <div class="space-y-3">
+                            <label class="block text-sm text-gray-700">题干
+                                <textarea id="question-review-question-${index}" rows="3" class="mt-1 w-full border rounded p-2 resize-y" oninput="TeacherPage.onQuestionReviewText(${index}, 'question_text', this.value)">${this._escapeQuestionReview(item.question_text)}</textarea>
+                            </label>
+                            <label class="block text-sm text-gray-700">教师答案
+                                <textarea id="question-review-answer-${index}" rows="2" class="mt-1 w-full border rounded p-2 resize-y" oninput="TeacherPage.onQuestionReviewText(${index}, 'teacher_answer', this.value)">${this._escapeQuestionReview(item.teacher_answer)}</textarea>
+                            </label>
+                        </div>
+                        <div class="bg-gray-50 rounded p-3 text-sm min-w-0">
+                            <div class="text-xs text-gray-500 mb-1">LLM 答案</div>
+                            <div class="font-medium text-gray-900 break-words">${this._escapeQuestionReview(item.llm_answer || '未生成')}</div>
+                            <div class="text-xs text-gray-500 mt-3 mb-1">LLM 解题步骤</div>
+                            ${steps.length ? `<ol class="list-decimal pl-5 space-y-1 text-gray-700">${steps.map(step => `<li>${this._escapeQuestionReview(step)}</li>`).join('')}</ol>` : '<div class="text-gray-400">暂无解题步骤</div>'}
+                            <div class="mt-3 pt-3 border-t text-gray-600">${this._escapeQuestionReview(item.comparison_reason || '系统未提供比较说明')}</div>
+                            ${item.existing_question_id ? `<div class="mt-2 text-xs text-blue-700">已匹配题库题目 ${this._escapeQuestionReview(item.existing_question_id)}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
+                        ${choice('teacher', '采用教师答案')}
+                        ${choice('llm', '采用 LLM 答案', llmDisabled)}
+                        ${item.existing_question_id ? choice('existing', '复用题库答案') : ''}
+                        ${choice('skip', '跳过本题')}
+                    </div>
+                    ${(item.comparison_status === 'conflict' || item.comparison_status === 'uncertain') && !item.decision ? '<div class="text-xs text-red-600 mt-2">此题需要教师主动选择处理方式。</div>' : ''}
+                </section>`;
+        }).join('');
+        this._resetQuestionReviewConfirmation();
+    },
+
+    onQuestionReviewText(index, field, value) {
+        const item = this._questionReviewItems[index];
+        if (!item || !['question_text', 'teacher_answer'].includes(field)) return;
+        item[field] = value;
+        this._resetQuestionReviewConfirmation();
+    },
+
+    onQuestionReviewDecision(index, decision) {
+        const item = this._questionReviewItems[index];
+        if (!item || !['teacher', 'llm', 'existing', 'skip'].includes(decision)) return;
+        if (decision === 'llm' && (item.comparison_status === 'llm_failed' || !item.llm_answer)) return;
+        if (decision === 'existing' && !item.existing_question_id) return;
+        item.decision = decision;
+        this._renderQuestionReview();
+    },
+
+    _resetQuestionReviewConfirmation() {
+        this._questionReviewReadyToConfirm = false;
+        const summary = document.getElementById('question-review-summary');
+        const error = document.getElementById('question-review-error');
+        const submit = document.getElementById('question-review-submit');
+        if (summary) summary.classList.add('hidden');
+        if (error) error.classList.add('hidden');
+        if (submit && !this._questionReviewBusy) submit.textContent = '检查确认内容';
+    },
+
+    _questionReviewPayload() {
+        return this._questionReviewItems.map(item => ({
+            item_id: item.item_id,
+            decision: item.decision,
+            question_text: item.question_text.trim(),
+            teacher_answer: item.teacher_answer.trim()
+        }));
+    },
+
+    _validateQuestionReview() {
+        for (let index = 0; index < this._questionReviewItems.length; index += 1) {
+            const item = this._questionReviewItems[index];
+            if (!item.decision) return `请先完成所有题目的裁决：第 ${index + 1} 题尚未选择。`;
+            if (item.decision !== 'skip' && !item.question_text.trim()) return `第 ${index + 1} 题的题干不能为空。`;
+            if (item.decision === 'teacher' && !item.teacher_answer.trim()) return `第 ${index + 1} 题的教师答案不能为空。`;
+            if (item.decision === 'llm' && (item.comparison_status === 'llm_failed' || !item.llm_answer)) return `第 ${index + 1} 题没有可采用的 LLM 答案。`;
+            if (item.decision === 'existing' && !item.existing_question_id) return `第 ${index + 1} 题没有可复用的题库答案。`;
+        }
+        return '';
+    },
+
+    async confirmQuestionReview() {
+        if (this._questionReviewBusy) return;
+        const validationError = this._validateQuestionReview();
+        const error = document.getElementById('question-review-error');
+        if (validationError) {
+            if (error) {
+                error.textContent = validationError;
+                error.classList.remove('hidden');
+            }
+            return;
+        }
+
+        if (!this._questionReviewReadyToConfirm) {
+            const counts = { teacher: 0, llm: 0, existing: 0, skip: 0 };
+            this._questionReviewItems.forEach(item => { counts[item.decision] += 1; });
+            const summary = document.getElementById('question-review-summary');
+            if (summary) {
+                summary.innerHTML = `<div class="font-medium text-green-800 mb-2">请确认本次入库内容</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        <div>教师答案 <strong>${counts.teacher}</strong></div><div>LLM 答案 <strong>${counts.llm}</strong></div>
+                        <div>复用题库 <strong>${counts.existing}</strong></div><div>跳过 <strong>${counts.skip}</strong></div>
+                    </div>`;
+                summary.classList.remove('hidden');
+            }
+            if (error) error.classList.add('hidden');
+            this._questionReviewReadyToConfirm = true;
+            const submit = document.getElementById('question-review-submit');
+            if (submit) submit.textContent = '确认入库';
+            return;
+        }
+
+        const preview = this._pendingQuestionImportPreview;
+        const teacherId = MockData.currentUser?.id;
+        if (!preview?.import_id || !teacherId) return;
+        this._questionReviewBusy = true;
+        const submit = document.getElementById('question-review-submit');
+        if (submit) {
+            submit.disabled = true;
+            submit.textContent = '正在确认入库...';
+        }
+        try {
+            const result = await Api.confirmTeacherQuestionImport(preview.import_id, teacherId, this._questionReviewPayload());
+            this._confirmedQuestionIds = (result.items || []).map(item => item.question_id).filter(Boolean);
+            this._pendingQuestionImportPreview = null;
+            this._questionReviewBusy = false;
+            this.closeQuestionReview();
+            this._showQuestionReviewSuccess(result);
+        } catch (requestError) {
+            this._questionReviewBusy = false;
+            this._questionReviewReadyToConfirm = false;
+            if (submit) {
+                submit.disabled = false;
+                submit.textContent = '重新检查确认内容';
+            }
+            if (error) {
+                error.textContent = requestError.message || '确认入库失败，请稍后重试。';
+                error.classList.remove('hidden');
+            }
+        }
+    },
+
+    _showQuestionReviewSuccess(result) {
+        const items = result.items || [];
+        const resultLabels = { created: '已新增', updated: '已更新', existing: '已复用', skipped: '已跳过' };
+        App.showModal('题目确认完成', `
+            <div class="space-y-2 text-sm">
+                ${items.map((item, index) => `<div class="flex items-center justify-between gap-3 p-2 bg-gray-50 rounded">
+                    <span>第 ${index + 1} 题 · ${resultLabels[item.result] || item.result}</span>
+                    <span class="font-medium text-gray-800 break-all">${this._escapeQuestionReview(item.question_id || '未入库')}</span>
+                </div>`).join('')}
+            </div>
+            <div class="text-xs text-gray-500 mt-3">已入库题目将在后续批次选题联动中自动勾选。</div>`);
     },
 
     showQuestionImportNotice(message) {

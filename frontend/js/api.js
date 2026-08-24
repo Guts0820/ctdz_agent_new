@@ -54,6 +54,16 @@ const Api = {
         return response.json();
     },
 
+    async confirmTeacherQuestionImport(importId, teacherId, items) {
+        return this.fetch('/v1/teacher/question-imports/' + encodeURIComponent(importId) + '/confirm', {
+            method: 'POST',
+            body: JSON.stringify({
+                teacher_id: teacherId,
+                items: items
+            })
+        });
+    },
+
     async getStudents(grade, className) {
         let params = [];
         if (grade) params.push('grade=' + grade);
