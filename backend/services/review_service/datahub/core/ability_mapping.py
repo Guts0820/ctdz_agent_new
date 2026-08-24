@@ -40,6 +40,10 @@ CORE_ABILITY_MAPPINGS = (
     ("K039", "operation", 1.0), ("K040", "spatial", 1.0),
     ("K041", "operation", 1.0), ("K042", "operation", 1.0),
     ("K043", "operation", 1.0), ("K044", "spatial", 1.0),
+    ("K166", "operation", 1.0), ("K167", "operation", 1.0),
+    ("K168", "operation", 1.0), ("K169", "operation", 1.0),
+    ("K170", "operation", 1.0), ("K171", "operation", 1.0),
+    ("K172", "operation", 1.0),
 )
 
 

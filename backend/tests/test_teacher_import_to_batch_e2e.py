@@ -11,6 +11,11 @@ def test_confirmed_teacher_questions_can_create_locked_batch(tmp_path, monkeypat
     with database.get_teacher_db() as connection:
         connection.executescript(
             """
+            CREATE TABLE question (
+                question_id TEXT PRIMARY KEY, question_description TEXT, question_type TEXT,
+                difficulty TEXT, grade TEXT, textbook_version TEXT,
+                standard_solve_steps TEXT, answer TEXT
+            );
             CREATE TABLE homework_batch (
                 batch_id TEXT PRIMARY KEY, class_id TEXT NOT NULL, teacher_id TEXT NOT NULL,
                 batch_date TEXT NOT NULL, release_status TEXT NOT NULL, created_at TEXT NOT NULL
@@ -73,4 +78,8 @@ def test_confirmed_teacher_questions_can_create_locked_batch(tmp_path, monkeypat
         row = connection.execute(
             "SELECT release_status FROM homework_batch WHERE batch_id = 'HB-E2E'"
         ).fetchone()
+        question = connection.execute(
+            "SELECT question_description, answer FROM question WHERE question_id = 'Q-E2E'"
+        ).fetchone()
     assert row[0] == "locked"
+    assert tuple(question) == ("1+1=", "2")

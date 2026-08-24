@@ -6,6 +6,7 @@ from backend.api_gateway.models import MistakeCorrectionRequest, MistakeCorrecti
 from backend.api_gateway.services.analysis_client import analyze_submission
 from backend.api_gateway.services.downstream import execute_downstream, require_fields
 from backend.api_gateway.services.gateway_database import get_gateway_db
+from backend.api_gateway.services.submission_service import _ensure_question_knowledge_mapping
 from backend.api_gateway.services.state_client import update_state
 
 
@@ -111,6 +112,8 @@ def process_mistake_correction(
     knowledge_id = analysis.get("knowledge_id") or mistake["knowledge_id"]
     if knowledge_id:
         try:
+            if mistake["question_id"]:
+                _ensure_question_knowledge_mapping(str(mistake["question_id"]), str(knowledge_id))
             state = execute_downstream(
                 "学习状态服务",
                 lambda: update_state(

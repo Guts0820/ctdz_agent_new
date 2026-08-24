@@ -12,6 +12,13 @@ def _seed_import(database, db_path, *, status="review_required", expires_at=None
     now = datetime.now(timezone.utc)
     with database.get_teacher_db() as connection:
         connection.execute(
+            """CREATE TABLE IF NOT EXISTS question (
+                question_id TEXT PRIMARY KEY, question_description TEXT, question_type TEXT,
+                difficulty TEXT, grade TEXT, textbook_version TEXT,
+                standard_solve_steps TEXT, answer TEXT
+            )"""
+        )
+        connection.execute(
             "INSERT INTO teacher_question_import "
             "(import_id, teacher_id, grade, semester, status, image_sha256, request_key, created_at, expires_at) "
             "VALUES ('TQI-1', 'T001', 3, '上学期', ?, 'image-hash', 'request-key', ?, ?)",
@@ -119,6 +126,9 @@ def test_confirm_persists_teacher_decision_and_reuses_existing_question(tmp_path
         assert connection.execute(
             "SELECT decision, confirmed_question_id FROM teacher_question_import_item WHERE item_id='ITEM-1'"
         ).fetchone() == ("teacher", "QNEW")
+        assert connection.execute(
+            "SELECT question_description, answer, grade FROM question WHERE question_id='QNEW'"
+        ).fetchone() == ("0.8 × 0.02 =", "0.016", "3年级")
 
 
 def test_confirm_rejects_non_owner_without_writing(tmp_path, monkeypatch) -> None:

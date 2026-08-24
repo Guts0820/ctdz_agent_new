@@ -227,6 +227,47 @@ def upsert_confirmed_questions(items: list[dict[str, Any]]) -> dict[str, dict[st
     return mapped
 
 
+def sync_confirmed_questions_to_sqlite(
+    graph_items: list[dict[str, Any]],
+    graph_results: dict[str, dict[str, str]],
+) -> None:
+    """Mirror confirmed teacher questions into SQLite for submission and mastery joins."""
+    rows = []
+    for item in graph_items:
+        result = graph_results.get(str(item["request_id"]))
+        if result is None:
+            continue
+        rows.append((
+            result["question_id"],
+            item["text"],
+            "教师导入题",
+            item.get("difficulty") or "medium",
+            f"{item['grade']}年级" if item.get("grade") else None,
+            "教师导入",
+            item.get("explanation") or "",
+            item["answer"],
+        ))
+    if not rows:
+        return
+    with get_teacher_db() as connection:
+        connection.executemany(
+            """INSERT INTO question
+               (question_id, question_description, question_type, difficulty, grade,
+                textbook_version, standard_solve_steps, answer)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(question_id) DO UPDATE SET
+                   question_description=excluded.question_description,
+                   question_type=excluded.question_type,
+                   difficulty=excluded.difficulty,
+                   grade=excluded.grade,
+                   textbook_version=excluded.textbook_version,
+                   standard_solve_steps=excluded.standard_solve_steps,
+                   answer=excluded.answer""",
+            rows,
+        )
+        connection.commit()
+
+
 def _load_confirmed_response(import_id: str) -> QuestionImportConfirmResponse:
     with get_teacher_db() as connection:
         rows = connection.execute(
@@ -389,6 +430,7 @@ def confirm_question_import(
                 if result is None:
                     raise HTTPException(status_code=502, detail="知识图谱服务缺少题目写入结果。")
                 item.update(result)
+        sync_confirmed_questions_to_sqlite(graph_items, graph_results)
     except Exception:
         with get_teacher_db() as connection:
             connection.execute(

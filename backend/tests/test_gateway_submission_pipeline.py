@@ -49,6 +49,7 @@ def install_common(monkeypatch, calls):
     monkeypatch.setattr(gateway, "generate_teaching", teaching)
     monkeypatch.setattr(gateway, "generate_review", lambda *_args: calls.append("review") or {"review_plan_id": "RP001", "status": "generated"})
     monkeypatch.setattr(gateway, "_is_answer_released", lambda _qid: True)
+    monkeypatch.setattr(gateway, "_ensure_question_knowledge_mapping", lambda *_args: None)
 
 
 def test_wrong_answer_runs_full_pipeline_in_order(monkeypatch):
@@ -190,3 +191,26 @@ def test_pending_image_wrong_answer_enters_mistake_book_without_error_analysis(m
     assert response.status == "success"
     assert response.data["mistake_case_id"] == "MC-LOCAL"
     assert response.data["answer_released"] is False
+
+
+def test_authoritative_knowledge_mapping_is_persisted_without_overwriting_existing(tmp_path, monkeypatch):
+    database = tmp_path / "submission-mapping.db"
+    with __import__("sqlite3").connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE question (question_id TEXT PRIMARY KEY);
+            CREATE TABLE question_knowledge_mapping (qkm_id TEXT PRIMARY KEY, question_id TEXT, knowledge_id TEXT, mapping_weight REAL);
+            INSERT INTO question VALUES ('Q1');
+            """
+        )
+    monkeypatch.setattr(gateway, "DATABASE_PATH", str(database))
+    monkeypatch.setattr("backend.shared.id_utils.generate_id", lambda _prefix: "QKM-NEW")
+
+    gateway._ensure_question_knowledge_mapping("Q1", "K167")
+    gateway._ensure_question_knowledge_mapping("Q1", "K999")
+
+    with __import__("sqlite3").connect(database) as connection:
+        rows = connection.execute(
+            "SELECT qkm_id, question_id, knowledge_id, mapping_weight FROM question_knowledge_mapping"
+        ).fetchall()
+    assert rows == [("QKM-NEW", "Q1", "K167", 1.0)]

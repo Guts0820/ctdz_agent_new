@@ -34,6 +34,24 @@ def _lookup_knowledge_id(question_id: Optional[str]) -> Optional[str]:
     return row["knowledge_id"] if row else None
 
 
+def _ensure_question_knowledge_mapping(question_id: str, knowledge_id: str) -> None:
+    """Persist an authoritative analysis mapping once, without replacing an existing mapping."""
+    from backend.shared.id_utils import generate_id
+
+    with _get_db() as connection:
+        existing = connection.execute(
+            "SELECT knowledge_id FROM question_knowledge_mapping WHERE question_id = ? LIMIT 1",
+            (question_id,),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                """INSERT INTO question_knowledge_mapping
+                   (qkm_id, question_id, knowledge_id, mapping_weight) VALUES (?, ?, ?, 1.0)""",
+                (generate_id("QKM"), question_id, knowledge_id),
+            )
+            connection.commit()
+
+
 def _batch_question_ids(batch_id: Optional[str]) -> Optional[list[str]]:
     if not batch_id:
         return None
@@ -261,6 +279,7 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
                 })
             if not knowledge_id:
                 return SubmitResponse(status="success", data={"judge_result": "correct", "step_feedback": analysis["step_feedback"], "master_level": 1.0, "next_action": "guide", "warning": "无法确定题目对应的知识点，跳过状态更新", **ocr_data})
+            _ensure_question_knowledge_mapping(question_id, knowledge_id)
             state = execute_downstream("学习状态服务", lambda: update_state(request.student_id, knowledge_id, True, analysis["confidence"], analysis.get("answer_history_id")))
             state = require_fields("学习状态服务", state, {"master_level", "next_action", "knowledge_mastery_id", "should_generate_review"})
             review = None
@@ -345,6 +364,7 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
         knowledge = require_fields(
             "知识服务", knowledge, {"knowledge_explanation", "difficulty", "standard_solution", "common_errors", "teaching_tips"}
         )
+        _ensure_question_knowledge_mapping(question_id, knowledge_id)
         frequency = execute_downstream("教学频控服务", lambda: check_frequency(request.student_id, knowledge_id))
         frequency = require_fields("教学频控服务", frequency, {"push_permission"})
         if not frequency["push_permission"]:
