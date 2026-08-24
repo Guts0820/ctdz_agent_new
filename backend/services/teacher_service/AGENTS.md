@@ -15,7 +15,10 @@
 - `routers/`：教师端内部路由。
 - `homework_batch_service.py`：批次创建、整批放行、部分放行逻辑。
 - `standard_answer_service.py`：标准答案 OCR 编排、字段映射和图谱写入请求。
+- `question_import_service.py`：教师题目录入预览、幂等暂存及已有题目复用。
+- `question_solver.py`、`answer_comparison.py`：新题独立解题和答案等价比较。
 - `routers/standard_answers.py`：标准答案图片上传接口。
+- `routers/question_imports.py`：教师题目录入预览接口。
 - `database.py`：共享 SQLite 文件连接。
 - `docs/README.md`：接口说明。
 
@@ -29,4 +32,4 @@
 
 ## 修改指南
 
-新增教师功能应先放入本模块，再由网关增加代理路由。标准答案导入只允许写入 OCR 已校验且置信度达到 `0.95` 的题目；题干、解释和答案字段的映射变化必须同步检查知识图谱接口。修改批次状态或数据库字段时同步检查提交服务的放行校验、前端 `teacher.js` 和 SQLite 初始化脚本，并运行后端回归测试。
+新增教师功能应先放入本模块，再由网关增加代理路由。标准答案导入只允许写入 OCR 已校验且置信度达到 `0.95` 的题目；预览确认前只能写教师导入暂存表，不得写正式题库。题干、解释和答案字段的映射变化必须同步检查知识图谱接口。修改批次状态或数据库字段时同步检查提交服务的放行校验、前端 `teacher.js` 和 SQLite 初始化脚本，并运行后端回归测试。

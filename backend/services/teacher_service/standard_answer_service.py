@@ -65,8 +65,8 @@ def _raise_downstream_error(response: requests.Response, service_name: str) -> N
     )
 
 
-def upload_standard_answers(image_bytes: bytes, filename: str, content_type: str) -> dict[str, Any]:
-    """Run standard-answer OCR and persist the validated fields through the graph service."""
+def recognize_standard_answer_image(image_bytes: bytes, filename: str, content_type: str) -> dict[str, Any]:
+    """Run strict standard-answer OCR without persisting its result."""
     try:
         ocr_response = requests.post(
             f"{OCR_SERVICE_URL.rstrip('/')}/v1/recognize",
@@ -78,9 +78,17 @@ def upload_standard_answers(image_bytes: bytes, filename: str, content_type: str
         raise HTTPException(status_code=502, detail=f"OCR 服务不可用：{error}") from error
     _raise_downstream_error(ocr_response, "OCR 服务")
     try:
-        ocr_payload = ocr_response.json()
+        payload = ocr_response.json()
     except ValueError as error:
         raise HTTPException(status_code=502, detail="OCR 服务返回了无效 JSON。") from error
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=502, detail="OCR 服务返回了无效结果。")
+    return payload
+
+
+def upload_standard_answers(image_bytes: bytes, filename: str, content_type: str) -> dict[str, Any]:
+    """Run standard-answer OCR and persist the validated fields through the graph service."""
+    ocr_payload = recognize_standard_answer_image(image_bytes, filename, content_type)
 
     graph_items = build_graph_items(ocr_payload)
     for item in graph_items:

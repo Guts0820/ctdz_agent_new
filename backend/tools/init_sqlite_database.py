@@ -216,6 +216,46 @@ CREATE TABLE IF NOT EXISTS question_release_override (
     FOREIGN KEY (question_id) REFERENCES question(question_id)
 );
 
+-- 教师标准答案图片预览会话；确认前与正式题库隔离
+CREATE TABLE IF NOT EXISTS teacher_question_import (
+    import_id VARCHAR(32) PRIMARY KEY,
+    teacher_id VARCHAR(32) NOT NULL,
+    grade INTEGER NOT NULL,
+    semester VARCHAR(20),
+    status VARCHAR(32) NOT NULL,
+    image_sha256 VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) NOT NULL UNIQUE,
+    ocr_confidence FLOAT,
+    ocr_engine VARCHAR(100),
+    error_message TEXT,
+    created_at DATETIME NOT NULL,
+    expires_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS teacher_question_import_item (
+    item_id VARCHAR(32) PRIMARY KEY,
+    import_id VARCHAR(32) NOT NULL,
+    position INTEGER NOT NULL,
+    question_text TEXT NOT NULL,
+    teacher_answer TEXT NOT NULL,
+    teacher_explanation TEXT,
+    llm_answer TEXT,
+    llm_solve_steps TEXT,
+    llm_difficulty VARCHAR(20),
+    solution_source VARCHAR(20) NOT NULL DEFAULT 'none',
+    comparison_status VARCHAR(20) NOT NULL,
+    comparison_reason TEXT,
+    comparison_confidence FLOAT NOT NULL DEFAULT 0,
+    existing_question_id VARCHAR(64),
+    decision VARCHAR(20),
+    created_at DATETIME NOT NULL,
+    UNIQUE(import_id, position),
+    FOREIGN KEY (import_id) REFERENCES teacher_question_import(import_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_teacher_question_import_teacher_status
+ON teacher_question_import(teacher_id, status);
+
 -- ===== review2_ 系列：新复习体系持久化表（与旧 review_plan/push_record 体系隔离）=====
 
 CREATE TABLE IF NOT EXISTS review2_plan (
@@ -429,7 +469,7 @@ def init_database():
     conn.close()
     
     print(f"Database initialized successfully at {DATABASE}")
-    print("Tables created: students, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit, homework_batch, homework_batch_question, question_release_override")
+    print("Tables created: students, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit, homework_batch, homework_batch_question, question_release_override, teacher_question_import, teacher_question_import_item")
     print("Initial data loaded for: knowledge(255+), error_bank(17), students(3), question(5), question_knowledge_mapping(5)")
 
 if __name__ == "__main__":
