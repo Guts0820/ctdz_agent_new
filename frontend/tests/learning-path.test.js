@@ -32,3 +32,14 @@ test('student learning path has explicit empty and retry states without mock fal
     assert.match(pathSection, /重试/);
     assert.doesNotMatch(pathSection, /MockData\.knowledge/);
 });
+
+test('starting a path node enters the real knowledge learning and review flows', () => {
+    const startSection = studentSource.slice(
+        studentSource.indexOf('    startPathLearning('),
+        studentSource.indexOf('    renderReport()'),
+    );
+    assert.match(startSection, /decodeURIComponent\(encodedKnowledgeId\)/);
+    assert.match(startSection, /this\.startLearning\(decodeURIComponent/);
+    assert.match(startSection, /Api\.fetch\('\/knowledge_points\/' \+ knowledgeId\)/);
+    assert.match(startSection, /StudentPage\.showReviewPlan\(\)/);
+});
