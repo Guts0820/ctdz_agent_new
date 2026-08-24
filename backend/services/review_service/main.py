@@ -1,8 +1,18 @@
 """Review 模块独立服务 (:8087)。"""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-app = FastAPI(title="Review Service", version="2.0.0")
+from backend.services.review_service.datahub.core.ability_mapping import ensure_ability_mapping_schema
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    ensure_ability_mapping_schema()
+    yield
+
+
+app = FastAPI(title="Review Service", version="2.0.0", lifespan=lifespan)
 
 try:
     from backend.services.review_service.review.api import review_sessions, review_plans, corrections, priority

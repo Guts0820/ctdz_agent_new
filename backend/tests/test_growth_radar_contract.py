@@ -1,6 +1,12 @@
 import sqlite3
+from datetime import datetime
 
 from backend.services.review_service.datahub.core import ability_mapping, growth_report
+
+
+class _StaticLearningPath:
+    def generate_contract_path(self, _student_id):
+        return {"data": [{"knowledge_id": "K004"}]}
 
 
 def test_ability_mapping_schema_is_versioned_and_seeded(tmp_path):
@@ -23,8 +29,13 @@ def test_ability_mapping_schema_is_versioned_and_seeded(tmp_path):
 def test_growth_report_contract_normalizes_student_and_never_invents_scores(tmp_path, monkeypatch):
     database = tmp_path / "growth-report.db"
     with sqlite3.connect(database) as connection:
-        connection.execute("CREATE TABLE knowledge_mastery (student_id TEXT)")
-        connection.execute("INSERT INTO knowledge_mastery VALUES ('S001')")
+        connection.execute(
+            """CREATE TABLE knowledge_mastery (
+                student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL,
+                correct_count INTEGER, wrong_count INTEGER
+            )"""
+        )
+        connection.execute("INSERT INTO knowledge_mastery VALUES ('S001', 'K999', 0.5, 50, 1, 1)")
     monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
 
     report = growth_report.GrowthReportContractService().generate_contract_report("S-0001")
@@ -49,3 +60,79 @@ def test_growth_report_contract_has_a_non_error_empty_state(tmp_path, monkeypatc
 
     assert report["radar"]["empty_state"]
     assert report["empty_state"]
+
+
+def test_growth_report_aggregates_real_mastery_and_learning_behaviors(tmp_path, monkeypatch):
+    database = tmp_path / "growth-report-facts.db"
+    now = datetime.now().isoformat()
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE knowledge_mastery (
+                student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL,
+                correct_count INTEGER, wrong_count INTEGER
+            );
+            CREATE TABLE knowledge (knowledge_id TEXT, knowledge_name TEXT, knowledge_scope TEXT);
+            CREATE TABLE question_knowledge_mapping (question_id TEXT, knowledge_id TEXT);
+            CREATE TABLE answer_history (
+                student_id TEXT, question_id TEXT, is_correct INTEGER, error_tags TEXT, submitted_at TEXT
+            );
+            CREATE TABLE mistake_case (student_id TEXT, current_status TEXT);
+            CREATE TABLE review2_plan (student_id TEXT, status TEXT);
+            CREATE TABLE review2_session (id TEXT, student_id TEXT);
+            CREATE TABLE review2_attempt (session_id TEXT, submitted_at TEXT);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K004', 0.8, 20, 4, 1);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K005', 0.6, 40, 2, 2);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K011', 0.9, 30, 5, 1);
+            INSERT INTO knowledge VALUES ('K005', '立体图形', '认识立体图形');
+            INSERT INTO question_knowledge_mapping VALUES ('Q-APP', 'K011');
+            INSERT INTO answer_history VALUES ('S001', 'Q-APP', 0, '[{"level1":"审题"}]', '%s');
+            INSERT INTO answer_history VALUES ('S001', 'Q-APP', 1, NULL, '%s');
+            INSERT INTO mistake_case VALUES ('S001', 'corrected');
+            INSERT INTO review2_plan VALUES ('S001', 'completed');
+            """ % (now, now)
+        )
+    ability_mapping.ensure_ability_mapping_schema(database)
+    events = []
+    monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
+    monkeypatch.setattr(growth_report, "log_event", lambda event, **fields: events.append((event, fields)))
+
+    report = growth_report.GrowthReportContractService(_StaticLearningPath()).generate_contract_report("S-0001")
+    dimensions = {item["id"]: item for item in report["radar"]["dimensions"]}
+
+    assert dimensions["operation"]["score"] == 80.0
+    assert dimensions["spatial"]["score"] == 60.0
+    assert dimensions["application"]["score"] == 75.0
+    assert dimensions["resilience"]["status"] == "ready"
+    assert dimensions["resilience"]["score"] is not None
+    assert report["mastery_overview"] == {
+        "weak_count": 0, "developing_count": 1, "mastered_count": 2, "average_mastery": 76.7,
+    }
+    assert report["learning_path_summary"] == {"count": 1, "first_knowledge_id": "K004"}
+    assert events[0][0] == "growth_report.generated"
+    assert "student_answer" not in events[0][1]
+
+
+def test_growth_report_does_not_score_resilience_from_one_behavior_type(tmp_path, monkeypatch):
+    database = tmp_path / "growth-report-insufficient.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE knowledge_mastery (student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL, correct_count INTEGER, wrong_count INTEGER);
+            CREATE TABLE answer_history (student_id TEXT, question_id TEXT, is_correct INTEGER, error_tags TEXT, submitted_at TEXT);
+            CREATE TABLE question_knowledge_mapping (question_id TEXT, knowledge_id TEXT);
+            CREATE TABLE mistake_case (student_id TEXT, current_status TEXT);
+            CREATE TABLE review2_plan (student_id TEXT, status TEXT);
+            CREATE TABLE review2_session (id TEXT, student_id TEXT);
+            CREATE TABLE review2_attempt (session_id TEXT, submitted_at TEXT);
+            INSERT INTO answer_history VALUES ('S001', 'Q1', 1, NULL, '2026-08-24T09:00:00');
+            """
+        )
+    ability_mapping.ensure_ability_mapping_schema(database)
+    monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
+
+    report = growth_report.GrowthReportContractService(_StaticLearningPath()).generate_contract_report("S001")
+    resilience = next(item for item in report["radar"]["dimensions"] if item["id"] == "resilience")
+
+    assert resilience["score"] is None
+    assert resilience["status"] == "insufficient_data"
