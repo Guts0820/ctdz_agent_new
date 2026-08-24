@@ -9,7 +9,13 @@ from fastapi import HTTPException
 
 from backend.services.teacher_service.answer_comparison import AnswerComparison, compare_answers
 from backend.services.teacher_service.database import ensure_question_import_tables, get_teacher_db
-from backend.services.teacher_service.models import QuestionImportPreviewItem, QuestionImportPreviewResponse
+from backend.services.teacher_service.models import (
+    QuestionImportConfirmRequest,
+    QuestionImportConfirmResponse,
+    QuestionImportConfirmResult,
+    QuestionImportPreviewItem,
+    QuestionImportPreviewResponse,
+)
 from backend.services.teacher_service.question_solver import solve_question_with_llm
 from backend.services.teacher_service.standard_answer_service import (
     build_graph_items,
@@ -17,6 +23,7 @@ from backend.services.teacher_service.standard_answer_service import (
 )
 from backend.shared.config import HTTP_TIMEOUT_SECONDS, KNOWLEDGE_GRAPH_URL
 from backend.shared.id_utils import generate_id
+from backend.shared.llm_client import get_llm_model
 
 
 PREVIEW_TTL_HOURS = 24
@@ -45,6 +52,20 @@ def _steps(value: Any) -> list[str]:
         return []
     text = str(value).strip()
     return [text] if text else []
+
+
+def _stored_steps(value: Any) -> list[str]:
+    if isinstance(value, str):
+        try:
+            return _steps(json.loads(value))
+        except (TypeError, ValueError):
+            pass
+    return _steps(value)
+
+
+def _datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 def find_existing_question(question_text: str) -> dict[str, Any] | None:
@@ -169,6 +190,238 @@ def _mark_failed(import_id: str, error: Exception) -> None:
         connection.commit()
 
 
+def upsert_confirmed_questions(items: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """Write confirmed canonical questions through the knowledge graph service."""
+    try:
+        response = requests.post(
+            f"{KNOWLEDGE_GRAPH_URL.rstrip('/')}/internal/api/questions/standard-answer",
+            json={"items": items},
+            timeout=30,
+        )
+    except requests.RequestException as error:
+        raise HTTPException(status_code=502, detail=f"知识图谱服务不可用：{error}") from error
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail="知识图谱服务返回了无效 JSON。") from error
+    if response.status_code >= 400:
+        detail = payload.get("detail") if isinstance(payload, dict) else None
+        raise HTTPException(
+            status_code=502,
+            detail=detail or f"知识图谱服务返回 HTTP {response.status_code}",
+        )
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=502, detail="知识图谱服务返回了无效结果。")
+    results = payload.get("results")
+    if not isinstance(results, list):
+        raise HTTPException(status_code=502, detail="知识图谱服务未返回题目写入结果。")
+    mapped: dict[str, dict[str, str]] = {}
+    for result in results:
+        if not isinstance(result, dict):
+            continue
+        request_id = str(result.get("request_id") or "")
+        question_id = str(result.get("question_id") or "")
+        result_status = str(result.get("result") or "")
+        if request_id and question_id and result_status in {"created", "updated"}:
+            mapped[request_id] = {"question_id": question_id, "result": result_status}
+    return mapped
+
+
+def _load_confirmed_response(import_id: str) -> QuestionImportConfirmResponse:
+    with get_teacher_db() as connection:
+        rows = connection.execute(
+            "SELECT item_id, decision, confirmed_question_id, confirm_result "
+            "FROM teacher_question_import_item WHERE import_id=? ORDER BY position",
+            (import_id,),
+        ).fetchall()
+    return QuestionImportConfirmResponse(
+        import_id=import_id,
+        status="confirmed",
+        items=[
+            QuestionImportConfirmResult(
+                item_id=row["item_id"],
+                decision=row["decision"],
+                question_id=row["confirmed_question_id"],
+                result=row["confirm_result"],
+            )
+            for row in rows
+        ],
+    )
+
+
+def _prepare_confirmation(
+    import_id: str,
+    session: Any,
+    rows: list[Any],
+    request: QuestionImportConfirmRequest,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    decisions = {item.item_id: item for item in request.items}
+    row_ids = {str(row["item_id"]) for row in rows}
+    if set(decisions) != row_ids:
+        raise HTTPException(status_code=422, detail="必须为预览中的每道题提交且只提交一个裁决。")
+
+    graph_items: list[dict[str, Any]] = []
+    prepared: list[dict[str, Any]] = []
+    for row in rows:
+        item_id = str(row["item_id"])
+        decision = decisions[item_id]
+        if decision.decision == "skip":
+            prepared.append({"item_id": item_id, "decision": "skip", "result": "skipped"})
+            continue
+        if decision.decision == "existing":
+            existing_question_id = str(row["existing_question_id"] or "")
+            if not existing_question_id:
+                raise HTTPException(status_code=422, detail=f"题目 {item_id} 未命中可复用的既有题目。")
+            if decision.question_text is not None and decision.question_text.strip() != str(row["question_text"]).strip():
+                raise HTTPException(status_code=422, detail=f"题目 {item_id} 已编辑，不能直接采用既有题目。")
+            prepared.append({
+                "item_id": item_id,
+                "decision": "existing",
+                "question_id": existing_question_id,
+                "result": "existing",
+            })
+            continue
+
+        question_text = (
+            decision.question_text.strip()
+            if decision.question_text is not None
+            else str(row["question_text"]).strip()
+        )
+        if not question_text:
+            raise HTTPException(status_code=422, detail=f"题目 {item_id} 的题干不能为空。")
+        solve_steps = _stored_steps(row["llm_solve_steps"])
+        if decision.decision == "llm":
+            answer = str(row["llm_answer"] or "").strip()
+            if not answer:
+                raise HTTPException(status_code=422, detail=f"题目 {item_id} 没有可采用的 LLM 答案。")
+            explanation = "\n".join(solve_steps)
+            answer_source = "llm"
+        else:
+            answer = (
+                decision.teacher_answer.strip()
+                if decision.teacher_answer is not None
+                else str(row["teacher_answer"]).strip()
+            )
+            if not answer:
+                raise HTTPException(status_code=422, detail=f"题目 {item_id} 的教师答案不能为空。")
+            teacher_explanation = (
+                decision.teacher_explanation.strip()
+                if decision.teacher_explanation is not None
+                else str(row["teacher_explanation"] or "").strip()
+            )
+            explanation = teacher_explanation or "\n".join(solve_steps)
+            answer_source = "teacher"
+
+        request_id = hashlib.sha256(f"{import_id}\n{item_id}".encode("utf-8")).hexdigest()
+        graph_items.append({
+            "text": question_text,
+            "answer": answer,
+            "explanation": explanation,
+            "request_id": request_id,
+            "grade": int(session["grade"]),
+            "semester": session["semester"],
+            "difficulty": row["llm_difficulty"],
+            "answer_source": answer_source,
+            "created_by": request.teacher_id.strip(),
+            "updated_by": request.teacher_id.strip(),
+            "llm_model": row["llm_model"],
+            "llm_solved_at": row["llm_solved_at"],
+            "llm_call_count": 1 if row["solution_source"] == "llm" else 0,
+            "status": "ready",
+            "standard_solution_status": "ready",
+        })
+        prepared.append({
+            "item_id": item_id,
+            "decision": decision.decision,
+            "request_id": request_id,
+        })
+    return graph_items, prepared
+
+
+def confirm_question_import(
+    import_id: str,
+    request: QuestionImportConfirmRequest,
+) -> QuestionImportConfirmResponse:
+    teacher_id = request.teacher_id.strip()
+    if not teacher_id:
+        raise HTTPException(status_code=422, detail="teacher_id 不能为空")
+    ensure_question_import_tables()
+    with get_teacher_db() as connection:
+        session = connection.execute(
+            "SELECT * FROM teacher_question_import WHERE import_id=?", (import_id,)
+        ).fetchone()
+        if session is None:
+            raise HTTPException(status_code=404, detail="题目录入预览不存在")
+        if str(session["teacher_id"]) != teacher_id:
+            raise HTTPException(status_code=403, detail="无权确认其他教师的题目录入会话。")
+        if session["status"] == "confirmed":
+            return _load_confirmed_response(import_id)
+        if _datetime(session["expires_at"]) <= _now():
+            connection.execute(
+                "UPDATE teacher_question_import SET status='expired' WHERE import_id=?",
+                (import_id,),
+            )
+            connection.commit()
+            raise HTTPException(status_code=410, detail="题目录入预览已过期，请重新上传。")
+        if session["status"] != "review_required":
+            raise HTTPException(status_code=409, detail=f"当前会话状态不可确认：{session['status']}")
+        rows = connection.execute(
+            "SELECT * FROM teacher_question_import_item WHERE import_id=? ORDER BY position",
+            (import_id,),
+        ).fetchall()
+        graph_items, prepared = _prepare_confirmation(import_id, session, rows, request)
+        updated = connection.execute(
+            "UPDATE teacher_question_import SET status='confirming' "
+            "WHERE import_id=? AND status='review_required'",
+            (import_id,),
+        )
+        if updated.rowcount != 1:
+            connection.rollback()
+            raise HTTPException(status_code=409, detail="题目录入会话正在确认，请勿重复提交。")
+        connection.commit()
+
+    try:
+        graph_results = upsert_confirmed_questions(graph_items) if graph_items else {}
+        for item in prepared:
+            request_id = item.get("request_id")
+            if request_id:
+                result = graph_results.get(request_id)
+                if result is None:
+                    raise HTTPException(status_code=502, detail="知识图谱服务缺少题目写入结果。")
+                item.update(result)
+    except Exception:
+        with get_teacher_db() as connection:
+            connection.execute(
+                "UPDATE teacher_question_import SET status='review_required' "
+                "WHERE import_id=? AND status='confirming'",
+                (import_id,),
+            )
+            connection.commit()
+        raise
+
+    confirmed_at = _now().isoformat()
+    with get_teacher_db() as connection:
+        for item in prepared:
+            connection.execute(
+                "UPDATE teacher_question_import_item SET decision=?, confirmed_question_id=?, confirm_result=? "
+                "WHERE import_id=? AND item_id=?",
+                (
+                    item["decision"],
+                    item.get("question_id"),
+                    item["result"],
+                    import_id,
+                    item["item_id"],
+                ),
+            )
+        connection.execute(
+            "UPDATE teacher_question_import SET status='confirmed', confirmed_at=? "
+            "WHERE import_id=? AND status='confirming'",
+            (confirmed_at, import_id),
+        )
+        connection.commit()
+    return _load_confirmed_response(import_id)
+
+
 def _resolve_solution(question_text: str, grade: int, semester: str | None) -> tuple[dict, str, str | None]:
     existing = find_existing_question(question_text)
     if existing and str(existing.get("answer") or "").strip():
@@ -235,6 +488,8 @@ def create_question_import_preview(
                 comparison_status = comparison.status
                 comparison_reason = comparison.reason
                 comparison_confidence = comparison.confidence
+                llm_model = get_llm_model() if solution_source == "llm" else None
+                llm_solved_at = _now().isoformat() if solution_source == "llm" else None
             except Exception:
                 llm_answer = None
                 solve_steps = []
@@ -244,6 +499,8 @@ def create_question_import_preview(
                 comparison_status = "llm_failed"
                 comparison_reason = "LLM 独立解题失败，请教师人工确认"
                 comparison_confidence = 0.0
+                llm_model = None
+                llm_solved_at = None
             rows.append((
                 item_id,
                 import_id,
@@ -259,6 +516,8 @@ def create_question_import_preview(
                 comparison_reason,
                 comparison_confidence,
                 existing_question_id,
+                llm_model,
+                llm_solved_at,
                 now,
             ))
         with get_teacher_db() as connection:
@@ -266,8 +525,8 @@ def create_question_import_preview(
                 "INSERT INTO teacher_question_import_item "
                 "(item_id, import_id, position, question_text, teacher_answer, teacher_explanation, "
                 "llm_answer, llm_solve_steps, llm_difficulty, solution_source, comparison_status, "
-                "comparison_reason, comparison_confidence, existing_question_id, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "comparison_reason, comparison_confidence, existing_question_id, llm_model, llm_solved_at, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 rows,
             )
             connection.execute(

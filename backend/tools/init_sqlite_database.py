@@ -229,7 +229,8 @@ CREATE TABLE IF NOT EXISTS teacher_question_import (
     ocr_engine VARCHAR(100),
     error_message TEXT,
     created_at DATETIME NOT NULL,
-    expires_at DATETIME NOT NULL
+    expires_at DATETIME NOT NULL,
+    confirmed_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS teacher_question_import_item (
@@ -248,6 +249,10 @@ CREATE TABLE IF NOT EXISTS teacher_question_import_item (
     comparison_confidence FLOAT NOT NULL DEFAULT 0,
     existing_question_id VARCHAR(64),
     decision VARCHAR(20),
+    confirmed_question_id VARCHAR(64),
+    confirm_result VARCHAR(20),
+    llm_model VARCHAR(100),
+    llm_solved_at DATETIME,
     created_at DATETIME NOT NULL,
     UNIQUE(import_id, position),
     FOREIGN KEY (import_id) REFERENCES teacher_question_import(import_id)
@@ -438,6 +443,21 @@ def init_database():
             cursor.execute(f"ALTER TABLE answer_history ADD COLUMN {col} {decl}")
         except sqlite3.OperationalError:
             pass
+
+    for table, columns in {
+        "teacher_question_import": [("confirmed_at", "DATETIME")],
+        "teacher_question_import_item": [
+            ("confirmed_question_id", "VARCHAR(64)"),
+            ("confirm_result", "VARCHAR(20)"),
+            ("llm_model", "VARCHAR(100)"),
+            ("llm_solved_at", "DATETIME"),
+        ],
+    }.items():
+        for col, decl in columns:
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+            except sqlite3.OperationalError:
+                pass
 
     column_mappings = {
         'knowledge': '(knowledge_id, knowledge_scope, knowledge_name, grade, textbook_version, unit, prerequisite, next_knowledge, difficulty, is_core)',

@@ -1,8 +1,15 @@
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from backend.services.teacher_service.models import QuestionImportPreviewResponse
-from backend.services.teacher_service.question_import_service import create_question_import_preview
+from backend.services.teacher_service.models import (
+    QuestionImportConfirmRequest,
+    QuestionImportConfirmResponse,
+    QuestionImportPreviewResponse,
+)
+from backend.services.teacher_service.question_import_service import (
+    confirm_question_import,
+    create_question_import_preview,
+)
 
 
 router = APIRouter(prefix="/internal/api/v1/teacher/question-imports", tags=["teacher-question-imports"])
@@ -31,3 +38,11 @@ async def preview_question_import(
         grade=grade,
         semester=semester,
     )
+
+
+@router.post("/{import_id}/confirm", response_model=QuestionImportConfirmResponse)
+async def confirm_import(
+    import_id: str,
+    request: QuestionImportConfirmRequest,
+) -> QuestionImportConfirmResponse:
+    return await run_in_threadpool(confirm_question_import, import_id, request)

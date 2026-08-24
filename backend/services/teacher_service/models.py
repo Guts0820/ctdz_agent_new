@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CreateBatchRequest(BaseModel):
@@ -59,3 +59,36 @@ class QuestionImportPreviewResponse(BaseModel):
     ocr_confidence: float | None = None
     ocr_engine: str | None = None
     items: list[QuestionImportPreviewItem]
+
+
+class QuestionImportConfirmItem(BaseModel):
+    item_id: str = Field(min_length=1)
+    decision: Literal["teacher", "llm", "existing", "skip"]
+    question_text: str | None = None
+    teacher_answer: str | None = None
+    teacher_explanation: str | None = None
+
+
+class QuestionImportConfirmRequest(BaseModel):
+    teacher_id: str = Field(min_length=1)
+    items: list[QuestionImportConfirmItem] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def item_ids_must_be_unique(self) -> "QuestionImportConfirmRequest":
+        item_ids = [item.item_id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("items 中不能包含重复 item_id")
+        return self
+
+
+class QuestionImportConfirmResult(BaseModel):
+    item_id: str
+    decision: Literal["teacher", "llm", "existing", "skip"]
+    question_id: str | None = None
+    result: Literal["created", "updated", "existing", "skipped"]
+
+
+class QuestionImportConfirmResponse(BaseModel):
+    import_id: str
+    status: Literal["confirmed"]
+    items: list[QuestionImportConfirmResult]

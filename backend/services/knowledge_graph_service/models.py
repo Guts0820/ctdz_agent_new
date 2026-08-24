@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Literal
 
 class KnowledgePoint(BaseModel):
     id: Optional[str] = None
@@ -22,7 +22,7 @@ class Question(BaseModel):
     id: Optional[str] = None
     text: Optional[str] = None
     answer: Optional[str] = None
-    difficulty: Optional[int] = None
+    difficulty: Optional[Any] = None
     grade: Optional[int] = None
     semester: Optional[str] = None
     source: Optional[str] = None
@@ -37,6 +37,11 @@ class Question(BaseModel):
     status: Optional[str] = None
     standard_solution_status: Optional[str] = None
     llm_call_count: Optional[int] = None
+    answer_source: Optional[str] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_solved_at: Optional[Any] = None
 
 
 class QuestionCandidate(Question):
@@ -73,16 +78,34 @@ class StandardAnswerItem(BaseModel):
     explanation: str = ""
     answer: str = Field(min_length=1)
     request_id: Optional[str] = None
+    grade: Optional[int] = None
+    semester: Optional[str] = None
+    difficulty: Optional[Any] = None
+    answer_source: Optional[Literal["teacher", "llm"]] = None
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_solved_at: Optional[str] = None
+    llm_call_count: Optional[int] = None
+    status: Literal["ready"] = "ready"
+    standard_solution_status: Literal["ready"] = "ready"
 
 
 class StandardAnswerUpsertRequest(BaseModel):
     items: List[StandardAnswerItem] = Field(min_length=1)
 
 
+class StandardAnswerUpsertResult(BaseModel):
+    request_id: Optional[str] = None
+    question_id: str
+    result: Literal["created", "updated"]
+
+
 class StandardAnswerUpsertResponse(BaseModel):
     imported_count: int
     vectorized_count: int = 0
     questions: List[Question]
+    results: List[StandardAnswerUpsertResult] = Field(default_factory=list)
 
 class ErrorCauseResponse(BaseModel):
     data: List[ErrorCause]

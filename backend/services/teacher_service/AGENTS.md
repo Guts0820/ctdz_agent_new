@@ -15,10 +15,10 @@
 - `routers/`：教师端内部路由。
 - `homework_batch_service.py`：批次创建、整批放行、部分放行逻辑。
 - `standard_answer_service.py`：标准答案 OCR 编排、字段映射和图谱写入请求。
-- `question_import_service.py`：教师题目录入预览、幂等暂存及已有题目复用。
+- `question_import_service.py`：教师题目录入预览、幂等暂存、逐题裁决和正式题库写入编排。
 - `question_solver.py`、`answer_comparison.py`：新题独立解题和答案等价比较。
 - `routers/standard_answers.py`：标准答案图片上传接口。
-- `routers/question_imports.py`：教师题目录入预览接口。
+- `routers/question_imports.py`：教师题目录入预览和确认接口。
 - `database.py`：共享 SQLite 文件连接。
 - `docs/README.md`：接口说明。
 
