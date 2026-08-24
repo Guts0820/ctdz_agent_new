@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 
 from backend.services.review_service.datahub.core import ability_mapping, growth_report
+from backend.services.review_service.datahub.models import GrowthReportResponse
 
 
 class _StaticLearningPath:
@@ -194,3 +195,78 @@ def test_growth_report_logs_unmapped_knowledge_for_mapping_governance(tmp_path, 
         "missing_count": 1,
         "knowledge_ids": ["K999"],
     }) in events
+
+
+def test_growth_report_uses_versioned_multi_dimension_mapping_weights(tmp_path, monkeypatch):
+    database = tmp_path / "growth-report-mapping-weights.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE knowledge_mastery (student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL, correct_count INTEGER, wrong_count INTEGER);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K004', 0.2, 0, 1, 3);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K900', 0.8, 0, 4, 1);
+            """
+        )
+    ability_mapping.ensure_ability_mapping_schema(database)
+    with sqlite3.connect(database) as connection:
+        connection.executemany(
+            """INSERT INTO knowledge_ability_mapping
+               (knowledge_id, dimension, weight, mapping_version, source)
+               VALUES (?, ?, ?, ?, 'test')""",
+            [
+                ("K900", "operation", 3.0, ability_mapping.MAPPING_VERSION),
+                ("K900", "logic", 2.0, ability_mapping.MAPPING_VERSION),
+                ("K900", "spatial", 1.0, "ability-map-v0"),
+            ],
+        )
+    monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
+
+    report = growth_report.GrowthReportContractService(_StaticLearningPath()).generate_contract_report("S001")
+    dimensions = {item["id"]: item for item in report["radar"]["dimensions"]}
+
+    assert dimensions["operation"]["score"] == 65.0
+    assert dimensions["logic"]["score"] == 80.0
+    assert dimensions["spatial"]["score"] is None
+
+
+def test_growth_report_validates_response_and_remains_read_only(tmp_path, monkeypatch):
+    database = tmp_path / "growth-report-read-only.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE knowledge_mastery (student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL, correct_count INTEGER, wrong_count INTEGER);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K004', 0.7, 0, 3, 1);
+            """
+        )
+    ability_mapping.ensure_ability_mapping_schema(database)
+    monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
+    service = growth_report.GrowthReportContractService(_StaticLearningPath())
+
+    with sqlite3.connect(database) as connection:
+        before = connection.execute("SELECT * FROM knowledge_mastery").fetchall()
+        mapping_before = connection.execute("SELECT * FROM knowledge_ability_mapping").fetchall()
+    report = service.generate_contract_report("S001")
+    with sqlite3.connect(database) as connection:
+        after = connection.execute("SELECT * FROM knowledge_mastery").fetchall()
+        mapping_after = connection.execute("SELECT * FROM knowledge_ability_mapping").fetchall()
+
+    validated = GrowthReportResponse.model_validate(report)
+    assert validated.student_id == "S001"
+    assert before == after
+    assert mapping_before == mapping_after
+
+
+def test_growth_report_degrades_when_sqlite_is_unavailable(monkeypatch):
+    events = []
+
+    def unavailable_connect(*_args, **_kwargs):
+        raise sqlite3.OperationalError("database unavailable")
+
+    monkeypatch.setattr(growth_report.sqlite3, "connect", unavailable_connect)
+    monkeypatch.setattr(growth_report, "log_event", lambda event, **fields: events.append((event, fields)))
+
+    report = growth_report.GrowthReportContractService(_StaticLearningPath()).generate_contract_report("S001")
+
+    assert all(item["status"] == "unavailable" for item in report["radar"]["dimensions"])
+    assert report["empty_state"]
+    assert events[0][1]["degradation_reasons"] == ["sqlite_unavailable"]

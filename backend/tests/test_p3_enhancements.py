@@ -32,6 +32,24 @@ def test_privileged_growth_report_routes_proxy_the_unified_contract(monkeypatch)
     assert error.value.status_code == 403
 
 
+def test_review_proxy_converts_review_service_request_errors(monkeypatch):
+    import requests
+    from fastapi import HTTPException
+    from backend.api_gateway.services import review_proxy_service
+
+    monkeypatch.setattr(
+        review_proxy_service.requests,
+        "request",
+        lambda **_kwargs: (_ for _ in ()).throw(requests.RequestException("offline")),
+    )
+
+    with __import__('pytest').raises(HTTPException) as error:
+        review_proxy_service.proxy_review_request("GET", "api/datahub", "growth_report/S001", None)
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "Review Service 不可用"
+
+
 def test_error_tags_have_stable_practice_mapping():
     from backend.services.teaching_service.main import ErrorTag, map_error_tags_to_practice
 
