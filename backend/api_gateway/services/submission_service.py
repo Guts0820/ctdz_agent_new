@@ -185,6 +185,33 @@ def _build_teaching_payload(error_analysis: dict[str, Any], master_level: float,
     }
 
 
+def _scope_validation_fallback(request: SubmitRequest, analysis: dict[str, Any], question_id: str, ocr_data: dict[str, Any]) -> SubmitResponse:
+    """Keep an unclassified teacher-uploaded question usable when inferred knowledge is out of scope.
+
+    Teacher imports currently store the answer and grade but may not have a canonical
+    knowledge-point mapping. Error analysis can infer a plausible point, but that
+    inference must not turn a valid judgment into a gateway 422.
+    """
+    return SubmitResponse(
+        status="success",
+        data={
+            "judge_result": analysis["judge_result"],
+            "step_feedback": analysis["step_feedback"],
+            "error_step_list": analysis.get("error_step_list", []),
+            "miss_step_list": analysis.get("miss_step_list", []),
+            "question_id": question_id,
+            "question_source": analysis.get("question_source", "teacher_upload"),
+            "question_pending_review": analysis.get("question_pending_review", False),
+            "answer_released": False,
+            "error_tags": [],
+            "low_confidence": True,
+            "next_action": "teacher_review",
+            "warning": "题目尚未绑定适用知识点，已完成判题，暂跳过知识讲解。",
+            **ocr_data,
+        },
+    )
+
+
 def process_submission(request: SubmitRequest) -> SubmitResponse:
     """Run the submission pipeline and shape the existing gateway response."""
     try:
@@ -202,7 +229,8 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
         question_id = analysis.get("question_id") or prepared["question_id"]
         if not question_id:
             raise HTTPException(status_code=422, detail="判题服务未返回匹配到的知识图谱题目")
-        knowledge_id = analysis.get("knowledge_id") or prepared["knowledge_id"] or _lookup_knowledge_id(question_id)
+        canonical_knowledge_id = prepared["knowledge_id"] or _lookup_knowledge_id(question_id)
+        knowledge_id = analysis.get("knowledge_id") or canonical_knowledge_id
         if analysis["judge_result"] == "correct":
             if request.image and analysis.get("question_pending_review"):
                 return SubmitResponse(status="success", data={
@@ -290,7 +318,16 @@ def process_submission(request: SubmitRequest) -> SubmitResponse:
             "knowledge_scope": error_analysis.get("knowledge_scope", ""),
             "grade": request.grade or "三年级",
         }
-        knowledge = execute_downstream("知识服务", lambda: retrieve_knowledge(knowledge_payload))
+        try:
+            knowledge = execute_downstream("知识服务", lambda: retrieve_knowledge(knowledge_payload))
+        except HTTPException as error:
+            # An inferred knowledge point is not authoritative for a question that
+            # has no teacher/graph mapping. Preserve the judgment and route it for
+            # teacher review instead of exposing an opaque 422 to students.
+            detail = str(error.detail or "")
+            if not canonical_knowledge_id and "out of syllabus" in detail.lower():
+                return _scope_validation_fallback(request, analysis, question_id, ocr_data)
+            raise
         knowledge = require_fields(
             "知识服务", knowledge, {"knowledge_explanation", "difficulty", "standard_solution", "common_errors", "teaching_tips"}
         )

@@ -77,6 +77,42 @@ def test_missing_knowledge_id_stops_before_knowledge_and_teaching(monkeypatch):
     assert caught.value.status_code == 422
 
 
+def test_unmapped_teacher_question_does_not_fail_on_inferred_out_of_scope_knowledge(monkeypatch):
+    monkeypatch.setattr(
+        gateway,
+        "fetch_question",
+        lambda _qid: {"id": "Q001", "answer": "0.016", "answer_steps": ["小数乘法"], "knowledge_id": ""},
+    )
+    monkeypatch.setattr(
+        gateway,
+        "analyze_submission",
+        lambda _payload: {**analysis_result(), "knowledge_id": None, "original_question": "0.8 × 0.02 ="},
+    )
+    monkeypatch.setattr(gateway, "analyze_error", lambda _payload: error_result("K167"))
+    monkeypatch.setattr(
+        gateway,
+        "retrieve_knowledge",
+        lambda _payload: (_ for _ in ()).throw(
+            HTTPException(status_code=422, detail="Knowledge scope validation failed (out of syllabus)")
+        ),
+    )
+
+    response = gateway.process_submission(
+        SubmitRequest(
+            student_id="S001",
+            question_id="Q001",
+            original_question="0.8 × 0.02 =",
+            student_write="0.16",
+            grade="一年级",
+        )
+    )
+
+    assert response.status == "success"
+    assert response.data["next_action"] == "teacher_review"
+    assert response.data["answer_released"] is False
+    assert "暂跳过知识讲解" in response.data["warning"]
+
+
 def test_downstream_unavailable_returns_503_without_false_success(monkeypatch):
     calls = []
     install_common(monkeypatch, calls)
