@@ -7,6 +7,7 @@ from backend.api_gateway.legacy_models import (
     ProgressItem, LearningPathNode, KnowledgePoint
 )
 from datetime import datetime, timedelta
+from backend.api_gateway.services.review_proxy_service import proxy_review_request
 
 router = APIRouter(prefix="/api", tags=["growth_report"])
 
@@ -292,97 +293,21 @@ def get_learning_path(user_id: int) -> List[LearningPathNode]:
     
     return result
 
-@router.get("/growth_report/{user_id}", response_model=GrowthReport)
+@router.get("/growth_report/{user_id}", include_in_schema=False)
 def generate_growth_report(user_id: int):
-    user = user_db.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
-    
-    five_dimension_scores = [
-        FiveDimensionScore(
-            dimension="operation",
-            score=calculate_operation_ability(user_id),
-            label="运算能力"
-        ),
-        FiveDimensionScore(
-            dimension="logic",
-            score=calculate_logic_ability(user_id),
-            label="逻辑思维"
-        ),
-        FiveDimensionScore(
-            dimension="spatial",
-            score=calculate_spatial_ability(user_id),
-            label="空间想象"
-        ),
-        FiveDimensionScore(
-            dimension="language",
-            score=calculate_language_reasoning(user_id),
-            label="语言推理"
-        ),
-        FiveDimensionScore(
-            dimension="resilience",
-            score=calculate_resilience(user_id),
-            label="学习韧性"
-        )
-    ]
-    
-    weak_knowledge_areas = get_weak_knowledge_areas(user_id)
-    recent_progress = get_recent_progress(user_id)
-    learning_path = get_learning_path(user_id)
-    
-    return GrowthReport(
-        user_id=user_id,
-        username=user.get("username", ""),
-        grade=user.get("grade", 1),
-        semester=user.get("semester", "上册"),
-        report_date=datetime.now().strftime("%Y-%m-%d"),
-        five_dimension_scores=five_dimension_scores,
-        weak_knowledge_areas=weak_knowledge_areas,
-        recent_progress=recent_progress,
-        learning_path=learning_path
-    )
+    return proxy_review_request("GET", "api/datahub", f"growth_report/{user_id}", None)
 
 
-@router.get("/parent/growth_report/{user_id}", response_model=GrowthReport)
+@router.get("/parent/growth_report/{user_id}", include_in_schema=False)
 def parent_growth_report(user_id: int, x_role: str | None = Header(None)):
     """Parent-safe read-only report; students cannot use this elevated route."""
     if (x_role or "").lower() not in {"parent", "admin"}:
         raise HTTPException(status_code=403, detail="仅家长或管理员可查看成长报告")
     return generate_growth_report(user_id)
 
-@router.get("/five_dimension_scores/{user_id}", response_model=List[FiveDimensionScore])
+@router.get("/five_dimension_scores/{user_id}", include_in_schema=False)
 def get_five_dimension_scores(user_id: int):
-    user = user_db.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
-    
-    return [
-        FiveDimensionScore(
-            dimension="operation",
-            score=calculate_operation_ability(user_id),
-            label="运算能力"
-        ),
-        FiveDimensionScore(
-            dimension="logic",
-            score=calculate_logic_ability(user_id),
-            label="逻辑思维"
-        ),
-        FiveDimensionScore(
-            dimension="spatial",
-            score=calculate_spatial_ability(user_id),
-            label="空间想象"
-        ),
-        FiveDimensionScore(
-            dimension="language",
-            score=calculate_language_reasoning(user_id),
-            label="语言推理"
-        ),
-        FiveDimensionScore(
-            dimension="resilience",
-            score=calculate_resilience(user_id),
-            label="学习韧性"
-        )
-    ]
+    raise HTTPException(status_code=410, detail="五维能力分数已合并到成长报告接口")
 
 @router.get("/weak_areas/{user_id}", response_model=List[WeakKnowledgeArea])
 def get_weak_areas(

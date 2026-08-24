@@ -89,6 +89,45 @@ class GrowthReportData(BaseModel):
     review_plan: Optional[List[Dict]] = None
 
 
+class RadarDimension(BaseModel):
+    id: str
+    label: str
+    score: Optional[float] = Field(default=None, ge=0, le=100)
+    sample_count: int = Field(ge=0)
+    confidence: str
+    status: str
+    summary: str
+
+
+class GrowthRadar(BaseModel):
+    dimensions: List[RadarDimension] = Field(default_factory=list)
+    empty_state: Optional[str] = None
+
+
+class MasteryOverview(BaseModel):
+    weak_count: int = Field(ge=0)
+    developing_count: int = Field(ge=0)
+    mastered_count: int = Field(ge=0)
+    average_mastery: Optional[float] = Field(default=None, ge=0, le=100)
+
+
+class LearningPathSummary(BaseModel):
+    count: int = Field(ge=0)
+    first_knowledge_id: Optional[str] = None
+
+
+class GrowthReportResponse(BaseModel):
+    student_id: str
+    generated_at: datetime
+    source: str
+    radar: GrowthRadar
+    mastery_overview: MasteryOverview
+    weak_knowledge_areas: List[Dict] = Field(default_factory=list)
+    recent_progress: List[Dict] = Field(default_factory=list)
+    learning_path_summary: Optional[LearningPathSummary] = None
+    empty_state: Optional[str] = None
+
+
 class HighFrequencyWrongItem(BaseModel):
     question_id: str
     question_text: str

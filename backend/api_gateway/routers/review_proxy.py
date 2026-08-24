@@ -41,6 +41,11 @@ async def priority_runs(path: str, request: Request):
     return await _proxy("priority-runs", path, request)
 
 
+@router.get("/api/datahub/growth_report/{student_id}")
+async def growth_report(student_id: str, request: Request):
+    return await _proxy("api/datahub", f"growth_report/{student_id}", request)
+
+
 @router.api_route("/api/datahub/{path:path}", methods=["GET", "POST"], include_in_schema=False)
 async def datahub(path: str, request: Request):
     return await _proxy("api/datahub", path, request)

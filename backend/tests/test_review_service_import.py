@@ -35,3 +35,12 @@ def test_gateway_does_not_expose_a_second_learning_path_algorithm() -> None:
     from backend.api_gateway.app import app
 
     assert "/api/learning_path/{user_id}" not in app.openapi()["paths"]
+
+
+def test_gateway_exposes_growth_report_only_through_datahub_contract() -> None:
+    from backend.api_gateway.app import app
+
+    paths = set(app.openapi()["paths"])
+    assert "/api/datahub/growth_report/{student_id}" in paths
+    assert "/api/growth_report/{user_id}" not in paths
+    assert "/api/five_dimension_scores/{user_id}" not in paths

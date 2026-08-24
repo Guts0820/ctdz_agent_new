@@ -6,11 +6,13 @@ from .models import (
     ClassMasteryData,
     RevisionStatistics,
     GrowthReportData,
+    GrowthReportResponse,
     LearningPathResponse,
 )
 from .core.learning_path import LearningPathRecommender
 from .core.statistics import StatisticsReporter
 from .core.aggregator import DataAggregator
+from .core.growth_report import GrowthReportContractService
 from .clients.review_plan_client import ReviewPlanClient
 from .clients.error_analysis_client import ErrorAnalysisClient
 
@@ -19,14 +21,15 @@ router = APIRouter(prefix="/api/datahub", tags=["datahub"])
 path_recommender = LearningPathRecommender()
 statistics = StatisticsReporter()
 aggregator = DataAggregator()
+growth_report_service = GrowthReportContractService()
 review_plan_client = ReviewPlanClient()
 error_analysis_client = ErrorAnalysisClient()
 
 
-@router.get("/growth_report/{student_id}", response_model=GrowthReportData)
+@router.get("/growth_report/{student_id}", response_model=GrowthReportResponse)
 def get_growth_report(student_id: str):
     try:
-        return aggregator.generate_growth_report(student_id)
+        return growth_report_service.generate_contract_report(student_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

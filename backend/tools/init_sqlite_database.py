@@ -72,6 +72,21 @@ CREATE TABLE IF NOT EXISTS question_knowledge_mapping (
     FOREIGN KEY (knowledge_id) REFERENCES knowledge(knowledge_id)
 );
 
+CREATE TABLE IF NOT EXISTS knowledge_ability_mapping (
+    knowledge_id VARCHAR(32) NOT NULL,
+    dimension VARCHAR(32) NOT NULL,
+    weight FLOAT NOT NULL DEFAULT 1.0,
+    mapping_version VARCHAR(32) NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (knowledge_id, dimension, mapping_version),
+    CHECK (dimension IN ('operation', 'logic', 'spatial', 'application')),
+    CHECK (weight > 0)
+);
+CREATE INDEX IF NOT EXISTS idx_knowledge_ability_mapping_dimension
+    ON knowledge_ability_mapping (dimension, mapping_version);
+
 CREATE TABLE IF NOT EXISTS answer_history (
     answer_history_id VARCHAR(32) PRIMARY KEY,
     student_id VARCHAR(32),
@@ -487,6 +502,9 @@ def init_database():
     
     conn.commit()
     conn.close()
+
+    from backend.services.review_service.datahub.core.ability_mapping import ensure_ability_mapping_schema
+    ensure_ability_mapping_schema(DATABASE)
     
     print(f"Database initialized successfully at {DATABASE}")
     print("Tables created: students, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit, homework_batch, homework_batch_question, question_release_override, teacher_question_import, teacher_question_import_item")

@@ -61,6 +61,18 @@ CREATE TABLE question_knowledge_mapping (
     FOREIGN KEY (knowledge_id) REFERENCES knowledge(knowledge_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目知识点关系表';
 
+CREATE TABLE knowledge_ability_mapping (
+    knowledge_id VARCHAR(32) NOT NULL COMMENT '知识点id',
+    dimension VARCHAR(32) NOT NULL COMMENT '能力维度',
+    weight DECIMAL(5,2) NOT NULL DEFAULT 1.00 COMMENT '映射权重',
+    mapping_version VARCHAR(32) NOT NULL COMMENT '映射版本',
+    source VARCHAR(32) NOT NULL COMMENT '映射来源',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (knowledge_id, dimension, mapping_version),
+    FOREIGN KEY (knowledge_id) REFERENCES knowledge(knowledge_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识点能力维度映射表';
+
 CREATE TABLE mistake_case (
     mistake_case_id VARCHAR(32) PRIMARY KEY COMMENT '错题案例id',
     student_id VARCHAR(32) COMMENT '学生id',
