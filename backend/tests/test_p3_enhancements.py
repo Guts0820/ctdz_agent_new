@@ -10,6 +10,28 @@ def test_parent_growth_report_requires_elevated_role(monkeypatch):
     assert error.value.status_code == 403
 
 
+def test_privileged_growth_report_routes_proxy_the_unified_contract(monkeypatch):
+    from backend.api_gateway.routers import growth_report
+
+    calls = []
+    monkeypatch.setattr(
+        growth_report,
+        "proxy_review_request",
+        lambda method, prefix, path, body: calls.append((method, prefix, path, body)) or {"source": "growth_report_v1"},
+    )
+
+    assert growth_report.parent_growth_report("S001", "parent") == {"source": "growth_report_v1"}
+    assert growth_report.admin_growth_report("S001", "admin") == {"source": "growth_report_v1"}
+    assert calls == [
+        ("GET", "api/datahub", "growth_report/S001", None),
+        ("GET", "api/datahub", "growth_report/S001", None),
+    ]
+
+    with __import__('pytest').raises(__import__('fastapi').HTTPException) as error:
+        growth_report.admin_growth_report("S001", "parent")
+    assert error.value.status_code == 403
+
+
 def test_error_tags_have_stable_practice_mapping():
     from backend.services.teaching_service.main import ErrorTag, map_error_tags_to_practice
 

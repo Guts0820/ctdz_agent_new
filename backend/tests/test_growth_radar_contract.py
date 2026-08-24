@@ -136,3 +136,61 @@ def test_growth_report_does_not_score_resilience_from_one_behavior_type(tmp_path
 
     assert resilience["score"] is None
     assert resilience["status"] == "insufficient_data"
+
+
+def test_growth_report_reloads_mastery_and_review_correction_facts(tmp_path, monkeypatch):
+    database = tmp_path / "growth-report-refresh.db"
+    now = datetime.now().isoformat()
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE knowledge_mastery (student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL, correct_count INTEGER, wrong_count INTEGER);
+            CREATE TABLE answer_history (student_id TEXT, question_id TEXT, is_correct INTEGER, error_tags TEXT, submitted_at TEXT);
+            CREATE TABLE question_knowledge_mapping (question_id TEXT, knowledge_id TEXT);
+            CREATE TABLE mistake_case (student_id TEXT, current_status TEXT);
+            CREATE TABLE review2_plan (student_id TEXT, status TEXT);
+            CREATE TABLE review2_session (id TEXT, student_id TEXT);
+            CREATE TABLE review2_attempt (session_id TEXT, question_id TEXT, submitted_at TEXT, correction_at TEXT, correction_is_correct INTEGER);
+            INSERT INTO knowledge_mastery VALUES ('S001', 'K004', 0.4, 0, 1, 2);
+            INSERT INTO review2_plan VALUES ('S001', 'completed');
+            INSERT INTO review2_session VALUES ('RS1', 'S001');
+            INSERT INTO review2_attempt VALUES ('RS1', 'Q1', '%s', NULL, NULL);
+            """ % now
+        )
+    ability_mapping.ensure_ability_mapping_schema(database)
+    monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
+    service = growth_report.GrowthReportContractService(_StaticLearningPath())
+
+    before = service.generate_contract_report("S001")
+    with sqlite3.connect(database) as connection:
+        connection.execute("UPDATE knowledge_mastery SET master_level = 0.8 WHERE student_id = 'S001' AND knowledge_id = 'K004'")
+        connection.execute("UPDATE review2_attempt SET correction_at = ?, correction_is_correct = 1 WHERE session_id = 'RS1'", (now,))
+
+    after = service.generate_contract_report("S001")
+    before_dimensions = {item["id"]: item for item in before["radar"]["dimensions"]}
+    after_dimensions = {item["id"]: item for item in after["radar"]["dimensions"]}
+
+    assert before_dimensions["operation"]["score"] == 40.0
+    assert after_dimensions["operation"]["score"] == 80.0
+    assert after_dimensions["resilience"]["score"] > before_dimensions["resilience"]["score"]
+
+
+def test_growth_report_logs_unmapped_knowledge_for_mapping_governance(tmp_path, monkeypatch):
+    database = tmp_path / "growth-report-mapping-gap.db"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "CREATE TABLE knowledge_mastery (student_id TEXT, knowledge_id TEXT, master_level REAL, priority REAL, correct_count INTEGER, wrong_count INTEGER)"
+        )
+        connection.execute("INSERT INTO knowledge_mastery VALUES ('S001', 'K999', 0.5, 0, 1, 1)")
+    ability_mapping.ensure_ability_mapping_schema(database)
+    events = []
+    monkeypatch.setattr(growth_report, "DATABASE_PATH", str(database))
+    monkeypatch.setattr(growth_report, "log_event", lambda event, **fields: events.append((event, fields)))
+
+    growth_report.GrowthReportContractService(_StaticLearningPath()).generate_contract_report("S001")
+
+    assert ("growth_report.mapping_gap_detected", {
+        "mapping_version": ability_mapping.MAPPING_VERSION,
+        "missing_count": 1,
+        "knowledge_ids": ["K999"],
+    }) in events

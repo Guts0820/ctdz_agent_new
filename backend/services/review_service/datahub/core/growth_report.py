@@ -42,7 +42,11 @@ class GrowthReportContractService:
         path_summary = self._learning_path_summary(normalized_student_id, degradation_reasons)
         has_facts = bool(mastery_records or resilience_fact_count)
         mapped_ids = {knowledge_id for knowledge_id, entries in mappings.items() if entries}
-        mapping_missing_count = sum(record["knowledge_id"] not in mapped_ids for record in mastery_records)
+        unmapped_knowledge_ids = sorted({
+            record["knowledge_id"] for record in mastery_records
+            if record["knowledge_id"] not in mapped_ids
+        })
+        mapping_missing_count = len(unmapped_knowledge_ids)
         empty_state = None if has_facts else "暂无足够的学习记录，完成一次作答后将生成成长报告。"
         if not has_facts:
             radar["empty_state"] = "完成一次作答后生成能力雷达图。"
@@ -67,6 +71,13 @@ class GrowthReportContractService:
             mapping_missing_count=mapping_missing_count,
             degradation_reasons=degradation_reasons,
         )
+        if unmapped_knowledge_ids:
+            log_event(
+                "growth_report.mapping_gap_detected",
+                mapping_version=MAPPING_VERSION,
+                missing_count=mapping_missing_count,
+                knowledge_ids=unmapped_knowledge_ids,
+            )
         return response
 
     @staticmethod
@@ -164,13 +175,27 @@ class GrowthReportContractService:
     def _load_resilience(connection: sqlite3.Connection, student_id: str) -> tuple[dict[str, float | None], int]:
         metrics: dict[str, float | None] = {"correction": None, "continuation": None, "review": None, "consistency": None}
         fact_count = 0
+        correction_outcomes: list[bool] = []
         try:
             rows = connection.execute("SELECT current_status FROM mistake_case WHERE student_id = ?", (student_id,)).fetchall()
             fact_count += len(rows)
             if rows:
-                metrics["correction"] = 100.0 * sum(row["current_status"] == "corrected" for row in rows) / len(rows)
+                correction_outcomes.extend(row["current_status"] == "corrected" for row in rows)
         except sqlite3.Error:
             pass
+        try:
+            rows = connection.execute(
+                """SELECT ra.correction_is_correct FROM review2_attempt ra
+                   JOIN review2_session rs ON rs.id = ra.session_id
+                   WHERE rs.student_id = ? AND ra.correction_at IS NOT NULL""",
+                (student_id,),
+            ).fetchall()
+            fact_count += len(rows)
+            correction_outcomes.extend(bool(row["correction_is_correct"]) for row in rows)
+        except sqlite3.Error:
+            pass
+        if correction_outcomes:
+            metrics["correction"] = 100.0 * sum(correction_outcomes) / len(correction_outcomes)
         try:
             rows = connection.execute("""SELECT question_id, COUNT(*) AS attempts, MAX(is_correct) AS corrected FROM answer_history
                 WHERE student_id = ? GROUP BY question_id HAVING SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) > 0""", (student_id,)).fetchall()

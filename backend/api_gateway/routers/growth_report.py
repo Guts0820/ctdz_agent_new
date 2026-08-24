@@ -293,17 +293,28 @@ def get_learning_path(user_id: int) -> List[LearningPathNode]:
     
     return result
 
-@router.get("/growth_report/{user_id}", include_in_schema=False)
-def generate_growth_report(user_id: int):
-    return proxy_review_request("GET", "api/datahub", f"growth_report/{user_id}", None)
+@router.get("/growth_report/{student_id}", include_in_schema=False)
+def generate_growth_report(student_id: str):
+    """Deprecated compatibility route that forwards the unified DataHub contract."""
+    return proxy_review_request("GET", "api/datahub", f"growth_report/{student_id}", None)
 
 
-@router.get("/parent/growth_report/{user_id}", include_in_schema=False)
-def parent_growth_report(user_id: int, x_role: str | None = Header(None)):
-    """Parent-safe read-only report; students cannot use this elevated route."""
-    if (x_role or "").lower() not in {"parent", "admin"}:
+def _privileged_growth_report(student_id: str, x_role: str | None, allowed_roles: set[str]):
+    if (x_role or "").lower() not in allowed_roles:
         raise HTTPException(status_code=403, detail="仅家长或管理员可查看成长报告")
-    return generate_growth_report(user_id)
+    return generate_growth_report(student_id)
+
+
+@router.get("/parent/growth_report/{student_id}", include_in_schema=False)
+def parent_growth_report(student_id: str, x_role: str | None = Header(None)):
+    """Parent-safe read-only report; students cannot use this elevated route."""
+    return _privileged_growth_report(student_id, x_role, {"parent", "admin"})
+
+
+@router.get("/admin/growth_report/{student_id}", include_in_schema=False)
+def admin_growth_report(student_id: str, x_role: str | None = Header(None)):
+    """Admin read-only report route; no reporting calculation lives in the gateway."""
+    return _privileged_growth_report(student_id, x_role, {"admin"})
 
 @router.get("/five_dimension_scores/{user_id}", include_in_schema=False)
 def get_five_dimension_scores(user_id: int):
