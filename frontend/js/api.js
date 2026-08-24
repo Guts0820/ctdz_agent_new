@@ -358,5 +358,13 @@ const Api = {
         params.push('page=' + (page || 1));
         params.push('page_size=' + (pageSize || 50));
         return this.fetch('/questions?' + params.join('&'));
+    },
+
+    async getTeacherQuestions(teacherId, grade, semester, page = 1, pageSize = 20, keyword = '') {
+        const params = ['teacher_id=' + encodeURIComponent(teacherId), 'page=' + page, 'page_size=' + pageSize];
+        if (grade) params.push('grade=' + encodeURIComponent(grade));
+        if (semester) params.push('semester=' + encodeURIComponent(semester));
+        if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+        return this.fetch('/v1/teacher/questions?' + params.join('&'));
     }
 };

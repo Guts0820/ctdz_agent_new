@@ -602,11 +602,16 @@ const TeacherPage = {
             <div id="batch-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
                 <div class="bg-white rounded-2xl w-11/12 max-w-md max-h-96 overflow-y-auto p-4">
                     <div class="font-bold mb-3">创建作业批次</div>
+                    <div class="flex gap-2 mb-3">
+                        <input id="batch-question-keyword" type="search" placeholder="搜索题干" class="flex-1 border rounded-lg px-3 py-2 text-sm">
+                        <button type="button" onclick="TeacherPage.loadBatchQuestions()" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">搜索</button>
+                    </div>
+                    <div id="batch-question-status" class="text-xs text-gray-500 mb-2" aria-live="polite"></div>
                     <div id="batch-question-list" class="space-y-2 mb-4">
                         <div class="text-gray-400 text-sm">加载题目中...</div>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="TeacherPage.confirmCreateBatch()" class="flex-1 py-2 gradient-primary text-white rounded-lg font-medium">确认创建</button>
+                        <button onclick="TeacherPage.confirmCreateBatch()" class="flex-1 py-2 gradient-primary text-white rounded-lg font-medium" disabled>确认创建</button>
                         <button onclick="document.getElementById('batch-modal').classList.add('hidden')" class="py-2 px-4 bg-gray-200 rounded-lg">取消</button>
                     </div>
                 </div>
@@ -631,6 +636,7 @@ const TeacherPage = {
     _selectedQuestions: [],
     _partialBatchId: null,
     _partialQuestions: [],
+    _batchQuestionLoadError: false,
     _questionImportFile: null,
     _questionImportBusy: false,
     _pendingQuestionImportPreview: null,
@@ -1036,7 +1042,8 @@ const TeacherPage = {
                     <span class="font-medium text-gray-800 break-all">${this._escapeQuestionReview(item.question_id || '未入库')}</span>
                 </div>`).join('')}
             </div>
-            <div class="text-xs text-gray-500 mt-3">已入库题目将在后续批次选题联动中自动勾选。</div>`);
+            <div class="text-xs text-gray-500 mt-3">已入库题目将在后续批次选题联动中自动勾选。</div>
+            ${this._confirmedQuestionIds.length ? '<button type="button" onclick="App.closeModal(); TeacherPage.showCreateBatchModal()" class="w-full mt-4 py-2 bg-blue-600 text-white rounded">去批次选题</button>' : ''}`);
     },
 
     showQuestionImportNotice(message) {
@@ -1048,37 +1055,61 @@ const TeacherPage = {
         if (!modal) return;
         modal.classList.remove('hidden');
 
+        const keyword = document.getElementById('batch-question-keyword');
+        if (keyword) keyword.value = '';
+        await this.loadBatchQuestions();
+    },
+
+    async loadBatchQuestions() {
         const listEl = document.getElementById('batch-question-list');
+        const statusEl = document.getElementById('batch-question-status');
+        if (!listEl) return;
         listEl.innerHTML = '<div class="text-gray-400 text-sm">加载题目中...</div>';
-
+        if (statusEl) statusEl.textContent = '';
+        this._batchQuestionLoadError = false;
         try {
-            const grade = MockData.currentUser?.grade || 3;
-            const result = await Api.getQuestionsForBatch(grade, null, 1, 20);
-            const questions = result.data || [];
-            this._availableQuestions = questions.slice(0, 8);
-
+            const user = MockData.currentUser || {};
+            const keyword = document.getElementById('batch-question-keyword')?.value?.trim() || '';
+            const result = await Api.getTeacherQuestions(user.id, user.grade || null, '', 1, 50, keyword);
+            this._availableQuestions = result.data || [];
+            this._selectedQuestions = this._availableQuestions.filter(q => this._confirmedQuestionIds.includes(q.id));
+            if (statusEl) statusEl.textContent = `${result.total || this._availableQuestions.length} 道可布置题目`;
+            if (this._availableQuestions.length === 0) {
+                listEl.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">题库暂无可布置题目，请先录入题目</div>';
+                this._updateBatchCreateButton();
+                return;
+            }
             listEl.innerHTML = this._availableQuestions.map((q, i) => `
-                <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input type="checkbox" class="batch-q-check" data-index="${i}" onchange="TeacherPage._onQuestionToggle()">
-                    <span class="text-sm flex-1">${q.text || q.name || q.id}</span>
-                    <span class="text-xs text-gray-400">${q.id}</span>
+                <label class="flex items-start gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="checkbox" class="batch-q-check mt-1" data-index="${i}" ${this._selectedQuestions.some(selected => selected.id === q.id) ? 'checked' : ''} onchange="TeacherPage._onQuestionToggle()">
+                    <span class="text-sm flex-1 min-w-0 break-words">${this._escapeQuestionReview(q.text || q.name || q.id)}</span>
+                    <span class="text-xs text-gray-400 shrink-0">${this._escapeQuestionReview(q.id)}</span>
                 </label>
             `).join('');
+            this._updateBatchCreateButton();
         } catch (e) {
-            listEl.innerHTML = '<div class="text-red-500 text-sm">加载失败: ' + e.message + '</div>';
+            this._batchQuestionLoadError = true;
+            listEl.innerHTML = `<div class="text-red-600 text-sm">加载题库失败：${this._escapeQuestionReview(e.message || '请稍后重试')}</div><button type="button" onclick="TeacherPage.loadBatchQuestions()" class="mt-2 text-sm text-blue-600 underline">重试</button>`;
+            this._updateBatchCreateButton();
         }
     },
 
     _onQuestionToggle() {
         const checks = document.querySelectorAll('.batch-q-check:checked');
         this._selectedQuestions = Array.from(checks).map(cb => this._availableQuestions[parseInt(cb.dataset.index)]);
+        this._updateBatchCreateButton();
+    },
+
+    _updateBatchCreateButton() {
+        const button = document.querySelector('#batch-modal button[onclick="TeacherPage.confirmCreateBatch()"]');
+        if (!button) return;
+        button.disabled = this._batchQuestionLoadError || this._selectedQuestions.length === 0;
+        button.classList.toggle('opacity-50', button.disabled);
+        button.classList.toggle('cursor-not-allowed', button.disabled);
     },
 
     async confirmCreateBatch() {
-        if (this._selectedQuestions.length === 0) {
-            alert('请至少选择一道题目');
-            return;
-        }
+        if (this._selectedQuestions.length === 0) return;
 
         const user = MockData.currentUser;
         const className = this.currentClassName || '';

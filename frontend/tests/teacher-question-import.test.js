@@ -140,3 +140,14 @@ test('teacher review sends confirmation only after summary acknowledgement', asy
     assert.equal(calls[0].items[0].question_text, '1 + 1 =');
     assert.deepEqual(Array.from(page._confirmedQuestionIds), ['Q-NEW']);
 });
+
+test('batch selection uses the teacher question bank and handles empty or failed states', () => {
+    assert.match(apiSource, /async getTeacherQuestions/);
+    assert.match(apiSource, /\/v1\/teacher\/questions/);
+    assert.match(teacherSource, /loadBatchQuestions/);
+    assert.match(teacherSource, /题库暂无可布置题目，请先录入题目/);
+    assert.match(teacherSource, /加载题库失败/);
+    assert.match(teacherSource, /_confirmedQuestionIds\.includes/);
+    assert.match(teacherSource, /_updateBatchCreateButton/);
+    assert.match(teacherSource, /disabled>确认创建/);
+});

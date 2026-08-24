@@ -29,6 +29,8 @@
 - 服务校验会话所有权、有效期和完整逐题裁决；确认期间状态为 `confirming`，成功后变为 `confirmed`。
 - `teacher` 和 `llm` 裁决通过知识图谱内部接口按指纹幂等写入，并保存年级、学期、答案来源、录入教师和 LLM 审计字段。
 - `existing` 只复用预览命中的正式 `question_id`，不会覆盖既有答案；`skip` 不写正式题库。
+
+教师题库查询：`GET /internal/api/v1/teacher/questions?teacher_id=T001&grade=3&semester=上学期&page=1&page_size=20&keyword=`。该接口从统一题库读取并只返回 `status=ready` 且 `standard_solution_status=ready` 的共享题目；`teacher_id` 用于请求上下文和审计，不限制题目可见范围。统一题库不可用时返回明确的 503 错误。
 - 重复确认已完成的会话直接返回首次结果，不会再次写图谱或调用 LLM；过期会话返回 HTTP 410。
 
 前端继续访问网关的 `/api/v1/teacher/...`，网关会转发到本服务。标准答案导入和题目录入预览均不保存图片文件，只在请求内存中转发图片字节。

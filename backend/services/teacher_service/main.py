@@ -5,12 +5,14 @@ from fastapi import FastAPI
 from backend.services.teacher_service.routers.homework_batches import router as homework_batches_router
 from backend.services.teacher_service.routers.standard_answers import router as standard_answers_router
 from backend.services.teacher_service.routers.question_imports import router as question_imports_router
+from backend.services.teacher_service.routers.questions import router as questions_router
 
 
 app = FastAPI(title="Teacher Service", version="1.0.0")
 app.include_router(homework_batches_router)
 app.include_router(standard_answers_router)
 app.include_router(question_imports_router)
+app.include_router(questions_router)
 
 
 @app.get("/health")

@@ -92,3 +92,10 @@ class QuestionImportConfirmResponse(BaseModel):
     import_id: str
     status: Literal["confirmed"]
     items: list[QuestionImportConfirmResult]
+
+
+class TeacherQuestionListResponse(BaseModel):
+    data: list[dict]
+    total: int
+    page: int
+    page_size: int
