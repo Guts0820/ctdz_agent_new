@@ -1168,40 +1168,60 @@ const StudentPage = {
     },
 
     renderPath() {
-        // 异步加载真实知识点数据
-        var self = this;
         setTimeout(async function() {
             var container = document.getElementById('path-items-container');
             if (!container) return;
             try {
                 var user = MockData.currentUser || {};
-                var grade = user.grade || 1;
-                var kpResult = await Api.fetch('/knowledge_points?grade=' + grade + '&page=1&page_size=20');
-                var items = kpResult.data || [];
-                // 同时获取薄弱知识点
-                var weakIds = [];
-                try {
-                    var sid = user.userId || user.id || 'S-0001';
-                    var weakResult = await Api.fetch('/students/' + sid + '/weak?threshold=50');
-                    weakIds = (weakResult.weak_points || []).map(function(w) { return w.knowledge_id; });
-                } catch(e) {}
+                var sid = user.userId || user.id || 'S-0001';
+                var result = await Api.getLearningPath(sid);
+                var items = Array.isArray(result.data) ? result.data : [];
+                if (items.length === 0) {
+                    container.innerHTML = '<div class="bg-white rounded-2xl p-8 shadow-soft text-center text-gray-500">' +
+                        '<div class="text-4xl mb-3">🧭</div>' +
+                        '<div class="font-medium text-gray-700">暂无学习路径</div>' +
+                        '<div class="text-sm mt-2">' + StudentPage._escapePathText(result.empty_state || '完成一次作答后生成个性化路径') + '</div>' +
+                        '</div>';
+                    return;
+                }
 
-                container.innerHTML = items.map(function(item, i) {
-                    var isWeak = weakIds.indexOf(item.id) >= 0;
+                container.innerHTML = items.map(function(item, index) {
+                    var stage = StudentPage._pathStageMeta(item.stage);
+                    var prerequisites = Array.isArray(item.prerequisites) ? item.prerequisites : [];
+                    var prerequisiteHtml = prerequisites.length > 0
+                        ? '<div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-600"><span class="font-medium">前置知识：</span>' +
+                            prerequisites.map(function(prerequisite) {
+                                var mastery = typeof prerequisite.mastery_level === 'number'
+                                    ? '（掌握度 ' + StudentPage._formatPathNumber(prerequisite.mastery_level) + '%）'
+                                    : '';
+                                return StudentPage._escapePathText(prerequisite.title || prerequisite.knowledge_id || '') + mastery;
+                            }).join('、') +
+                          '</div>'
+                        : '';
                     return '<div class="bg-white rounded-2xl p-4 shadow-soft">' +
                         '<div class="flex items-start gap-3">' +
-                            '<div class="w-10 h-10 rounded-full ' + (isWeak ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600') + ' flex items-center justify-center font-bold flex-shrink-0">' + (i+1) + '</div>' +
+                            '<div class="w-10 h-10 rounded-full ' + stage.numberClass + ' flex items-center justify-center font-bold flex-shrink-0">' + (item.sequence || index + 1) + '</div>' +
                             '<div class="flex-1">' +
                                 '<div class="flex items-center justify-between">' +
-                                    '<div class="font-bold">' + (item.title || item.id) + '</div>' +
-                                    '<span class="badge ' + (isWeak ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600') + '">' + (isWeak ? '薄弱' : '待学习') + '</span>' +
+                                    '<div class="font-bold pr-2">' + StudentPage._escapePathText(item.title || item.knowledge_id || '未命名知识点') + '</div>' +
+                                    '<span class="badge ' + stage.badgeClass + '">' + stage.label + '</span>' +
                                 '</div>' +
-                                '<div class="text-xs text-gray-500 mt-1">' + (item.grade || '') + '年级 · ' + (item.semester || '') + '</div>' +
-                                '<button onclick="StudentPage.startLearning(\'' + item.id + '\')" class="mt-3 bg-indigo-500 text-white text-xs px-4 py-2 rounded-lg">开始学习</button>' +
+                                '<div class="text-sm text-gray-600 mt-2">' + StudentPage._escapePathText(item.reason || '根据当前学习情况推荐') + '</div>' +
+                                '<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-2">' +
+                                    '<span>掌握度 ' + StudentPage._formatPathNumber(item.mastery_level) + '%</span>' +
+                                    '<span>预计 ' + (item.estimated_minutes || 0) + ' 分钟</span>' +
+                                '</div>' +
+                                prerequisiteHtml +
+                                '<button onclick="StudentPage.startPathLearning(\'' + StudentPage._pathActionId(item.knowledge_id) + '\')" class="mt-3 bg-indigo-500 text-white text-xs px-4 py-2 rounded-lg">开始学习</button>' +
                             '</div></div></div>';
                 }).join('');
             } catch(e) {
-                container.innerHTML = '<div class="text-center text-gray-400 py-8">加载失败: ' + (e.message || '') + '</div>';
+                container.innerHTML = '<div class="bg-white rounded-2xl p-8 shadow-soft text-center">' +
+                    '<div class="text-4xl mb-3">⚠️</div>' +
+                    '<div class="font-medium text-gray-700">学习路径加载失败</div>' +
+                    '<div class="text-sm text-gray-500 mt-2">' + StudentPage._escapePathText(e.message || '请检查网络或服务状态') + '</div>' +
+                    '<button onclick="StudentPage.navigate(\'path\')" class="mt-4 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm">重试</button>' +
+                    '</div>';
             }
         }, 50);
 
@@ -1209,20 +1229,46 @@ const StudentPage = {
         <div class="space-y-4">
             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl p-4">
                 <div class="font-bold text-lg">🛤️ 学习路径推荐</div>
-                <div class="text-sm opacity-90 mt-1">基于知识图谱和你的掌握度生成</div>
+                <div class="text-sm opacity-90 mt-1">按当前掌握度、复习优先级和前置关系生成</div>
             </div>
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">💡 学习路径说明</div>
                 <div class="text-sm text-gray-600 space-y-2">
-                    <div>• 红色节点：薄弱知识点，需要重点学习</div>
-                    <div>• 绿色节点：已掌握知识点，建议复习巩固</div>
-                    <div>• 每个知识点都配有推荐题目和学习建议</div>
+                    <div>• 按序完成知识点，前置知识会优先出现</div>
+                    <div>• 每项展示推荐原因、当前掌握度和预计学习时间</div>
                 </div>
             </div>
             <div id="path-items-container" class="space-y-3">
                 <div class="text-center text-gray-400 py-4">加载中...</div>
             </div>
         </div>`;
+    },
+
+    _pathStageMeta(stage) {
+        var stages = {
+            prerequisite: { label: '前置学习', badgeClass: 'bg-amber-100 text-amber-700', numberClass: 'bg-amber-100 text-amber-700' },
+            remedial: { label: '重点补弱', badgeClass: 'bg-red-100 text-red-600', numberClass: 'bg-red-100 text-red-600' },
+            consolidation: { label: '巩固提升', badgeClass: 'bg-blue-100 text-blue-700', numberClass: 'bg-blue-100 text-blue-700' },
+            extension: { label: '拓展学习', badgeClass: 'bg-green-100 text-green-700', numberClass: 'bg-green-100 text-green-700' }
+        };
+        return stages[stage] || { label: '建议学习', badgeClass: 'bg-gray-100 text-gray-600', numberClass: 'bg-gray-100 text-gray-600' };
+    },
+
+    _formatPathNumber(value) {
+        var numericValue = Number(value);
+        return Number.isFinite(numericValue) ? numericValue.toFixed(1).replace(/\.0$/, '') : '-';
+    },
+
+    _escapePathText(value) {
+        return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+
+    _pathActionId(knowledgeId) {
+        return encodeURIComponent(String(knowledgeId || '')).replace(/'/g, '%27');
+    },
+
+    startPathLearning(encodedKnowledgeId) {
+        return this.startLearning(decodeURIComponent(encodedKnowledgeId));
     },
     
     async startLearning(knowledgeId) {
@@ -1248,7 +1294,7 @@ const StudentPage = {
                     (kp.key_formulas ? '<div class="p-3 bg-purple-50 rounded-xl"><div class="text-xs text-gray-500 mb-1">关键公式</div><div class="text-sm font-mono">' + kp.key_formulas + '</div></div>' : '') +
                 '</div>' +
                 '<button onclick="var m=this.closest(\'.fixed\'); m.remove(); StudentPage.navigate(\'home\'); setTimeout(function(){ StudentPage.showReviewPlan(); }, 300)" class="w-full bg-purple-600 text-white rounded-xl py-3 font-medium mb-2">' +
-                    '📝 去复习这个知识点' +
+                    '📝 进入复习计划' +
                 '</button>' +
                 '<button onclick="this.closest(\'.fixed\').remove()" class="w-full bg-gray-100 text-gray-700 rounded-xl py-3">关闭</button>';
         } catch (e) {
