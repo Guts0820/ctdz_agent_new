@@ -256,8 +256,13 @@ const StudentPage = {
                 var weakResult = await Api.fetch('/students/' + sid + '/weak?threshold=60');
                 var items = (weakResult.weak_points || []).slice(0, 5);
                 if (items.length === 0) {
-                    var kpResult = await Api.fetch('/knowledge_points?page=1&page_size=5');
-                    items = (kpResult.data || []).map(function(k) { return { knowledge_id: k.id, title: k.title, mastery_level: 0 }; });
+                    try {
+                        var kpResult = await Api.fetch('/knowledge_points?page=1&page_size=5');
+                        items = (kpResult.data || []).map(function(k) { return { knowledge_id: k.id, title: k.title, mastery_level: 0 }; });
+                    } catch (knowledgeError) {
+                        console.warn('Knowledge recommendations unavailable:', knowledgeError);
+                        items = [];
+                    }
                 }
                 container.innerHTML = items.map(function(item, i) {
                     return '<div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">' +

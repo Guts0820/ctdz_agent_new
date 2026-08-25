@@ -28,7 +28,9 @@ test('student homepage fetches teacher batches and submits text answers through 
     assert.match(student, /submitHomeworkAnswer/);
     assert.match(api, /getStudentHomeworkBatches/);
     assert.match(api, /submitTextAnswer/);
+    assert.match(api, /\/v1\/teacher\/homework_batch\/student/);
     assert.match(api, /batch_id: batchId/);
     assert.match(api, /question_id: questionId/);
     assert.match(student, /page === 'path'[\s\S]*_loadStudentHomework\(\)/);
+    assert.match(student, /Knowledge recommendations unavailable/);
 });

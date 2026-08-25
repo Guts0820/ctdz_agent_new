@@ -84,7 +84,7 @@ const Api = {
     },
 
     async getStudentHomeworkBatches(studentId) {
-        return this.fetch('/student/' + encodeURIComponent(studentId) + '/homework_batches');
+        return this.fetch('/v1/teacher/homework_batch/student/' + encodeURIComponent(studentId) + '/homework_batches');
     },
 
     async submitTextAnswer(studentId, batchId, questionId, questionText, answer, grade) {
