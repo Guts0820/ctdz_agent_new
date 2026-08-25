@@ -66,6 +66,7 @@ class BatchResponse(BaseModel):
     release_status: str
     question_count: int
     question_ids: list[str] = []
+    question_details: list[dict] = []
 
 
 class ReleasePartialRequest(BaseModel):

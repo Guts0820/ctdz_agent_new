@@ -439,9 +439,29 @@ const TeacherPage = {
         }
     },
 
-    viewStudentReport(studentId) {
+    async viewStudentReport(studentId) {
         App.closeModal();
-        window.open('http://localhost:3002/growth_report.html', '_blank');
+        App.showModal('📊 成长报告', '<div class="text-center text-gray-500 py-6">报告加载中...</div>');
+        try {
+            const report = await Api.getGrowthReport(studentId);
+            const safe = this._escapeQuestionReview.bind(this);
+            const radar = report.radar || {};
+            const dimensions = Array.isArray(radar.dimensions) ? radar.dimensions : [];
+            const dimensionHtml = dimensions.length ? dimensions.map(item => {
+                const score = typeof item.score === 'number' ? `${Math.round(item.score)}分` : '积累中';
+                const sample = item.status === 'ready' ? `样本 ${item.sample_count || 0}` : `样本 ${item.sample_count || 0}，数据积累中`;
+                return `<div class="p-2 bg-gray-50 rounded-lg"><div class="font-medium text-gray-800">${safe(item.label || item.key || '能力维度')}</div><div class="text-lg text-purple-600 font-bold">${score}</div><div class="text-xs text-gray-500">${safe(sample)}</div><div class="text-xs text-gray-500 mt-1">${safe(item.summary || '')}</div></div>`;
+            }).join('') : '<div class="text-sm text-gray-500">能力数据积累中</div>';
+            const overview = report.mastery_overview || {};
+            const weak = Array.isArray(report.weak_knowledge_areas) ? report.weak_knowledge_areas : [];
+            const weakHtml = weak.length ? weak.map(item => `<div class="flex justify-between p-2 bg-red-50 rounded-lg"><span>${safe(item.title || item.knowledge_id || '未知知识点')}</span><span class="text-red-600">${Math.round(Number(item.mastery_level) || 0)}%</span></div>`).join('') : '<div class="text-sm text-gray-500">暂无薄弱知识点</div>';
+            const path = report.learning_path_summary || {};
+            const pathText = path.count ? `共有 ${path.count} 个学习节点${path.first_knowledge_id ? `，首个知识点：${path.first_knowledge_id}` : ''}` : '暂无学习路径建议';
+            document.getElementById('app-modal').querySelector('.p-4:last-child').innerHTML = `<div class="space-y-4 text-sm"><div class="text-gray-500">学生：${safe(studentId)}</div><section><div class="font-bold mb-2">五维能力</div><div class="grid grid-cols-2 gap-2">${dimensionHtml}</div></section><section><div class="font-bold mb-2">掌握总览</div><div class="grid grid-cols-2 gap-2"><div class="p-2 bg-blue-50 rounded">平均掌握度：${overview.average_mastery == null ? '积累中' : `${Math.round(overview.average_mastery)}%`}</div><div class="p-2 bg-green-50 rounded">已掌握：${overview.mastered_count || 0}</div><div class="p-2 bg-yellow-50 rounded">学习中：${overview.developing_count || 0}</div><div class="p-2 bg-red-50 rounded">薄弱：${overview.weak_count || 0}</div></div></section><section><div class="font-bold mb-2">薄弱知识点</div><div class="space-y-2">${weakHtml}</div></section><section><div class="font-bold mb-2">学习路径</div><div class="p-3 bg-purple-50 rounded-lg">${safe(pathText)}</div></section></div>`;
+        } catch (error) {
+            const modal = document.getElementById('app-modal');
+            if (modal) modal.querySelector('.p-4:last-child').innerHTML = `<div class="text-center text-red-600 py-6">成长报告加载失败：${this._escapeQuestionReview(error.message || '请检查服务连接')}</div>`;
+        }
     },
 
     initDashboardCharts() {
@@ -581,12 +601,16 @@ const TeacherPage = {
                     </div>
                     <span class="badge ${statusColor[b.release_status] || ''}">${statusLabel[b.release_status] || b.release_status}</span>
                 </div>
+                <div class="space-y-1 mb-3">${(b.question_details || b.question_ids || []).map((q, i) => {
+                    const detail = typeof q === 'string' ? { question_id: q, text: q } : q;
+                    return `<div class="text-sm text-gray-700 bg-gray-50 rounded px-2 py-1"><span class="text-gray-400 mr-1">题目${i + 1}</span>${this._escapeQuestionReview(detail.text || detail.question_id)}${detail.knowledge_id ? `<span class="text-xs text-gray-400 ml-2">${this._escapeQuestionReview(detail.knowledge_id)}</span>` : ''}</div>`;
+                }).join('')}</div>
                 ${b.release_status === 'locked' ? `
                 <div class="flex gap-2">
                     <button onclick="TeacherPage.releaseBatch('${b.batch_id}')" class="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600">
                         🔓 一键放行全部
                     </button>
-                    <button onclick="TeacherPage.showPartialReleaseModal('${b.batch_id}', ${b.question_count})" class="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
+                    <button onclick="TeacherPage.showPartialReleaseModal('${b.batch_id}')" class="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
                         🔍 精细放行
                     </button>
                 </div>` : b.release_status === 'partial' ? `
@@ -1142,7 +1166,7 @@ const TeacherPage = {
         }
     },
 
-    async showPartialReleaseModal(batchId, questionCount) {
+    async showPartialReleaseModal(batchId) {
         this._partialBatchId = batchId;
         this._partialQuestions = [];
 
@@ -1152,8 +1176,8 @@ const TeacherPage = {
 
         const listEl = document.getElementById('partial-question-list');
         try {
-            const result = await Api.getQuestionsForBatch(null, null, 1, questionCount);
-            const questions = (result.data || []).slice(0, questionCount);
+            const batch = (this.batches || []).find(item => item.batch_id === batchId) || {};
+            const questions = (batch.question_details || batch.question_ids || []).map(item => typeof item === 'string' ? { id: item, text: item } : { id: item.question_id, text: item.text || item.question_id });
 
             listEl.innerHTML = questions.map((q, i) => `
                 <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">

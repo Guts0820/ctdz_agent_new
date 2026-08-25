@@ -86,7 +86,25 @@ def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> 
             ids = [item[0] for item in connection.execute(
                 "SELECT question_id FROM homework_batch_question WHERE batch_id = ? ORDER BY rowid", (row["batch_id"],)
             ).fetchall()]
-            result.append(BatchResponse(**dict(row), question_ids=ids))
+            details = []
+            try:
+                detail_rows = connection.execute(
+                    """SELECT hbq.question_id,
+                              COALESCE(q.question_description, hbq.question_id) AS text,
+                              q.answer,
+                              qkm.knowledge_id
+                         FROM homework_batch_question hbq
+                         LEFT JOIN question q ON q.question_id = hbq.question_id
+                         LEFT JOIN question_knowledge_mapping qkm ON qkm.question_id = hbq.question_id
+                        WHERE hbq.batch_id = ? ORDER BY hbq.rowid""",
+                    (row["batch_id"],),
+                ).fetchall()
+                details = [dict(item) for item in detail_rows]
+            except Exception:
+                # Older/test databases may not contain the question tables yet.
+                details = [{"question_id": question_id, "text": question_id, "answer": None, "knowledge_id": None}
+                           for question_id in ids]
+            result.append(BatchResponse(**dict(row), question_ids=ids, question_details=details))
     return BatchListResponse(data=result, total=len(result))
 
 
