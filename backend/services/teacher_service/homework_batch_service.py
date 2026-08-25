@@ -100,6 +100,22 @@ def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> 
                     (row["batch_id"],),
                 ).fetchall()
                 details = [dict(item) for item in detail_rows]
+                for detail in details:
+                    if detail["text"] != detail["question_id"] or detail["answer"]:
+                        continue
+                    try:
+                        response = requests.get(
+                            f"{KNOWLEDGE_GRAPH_URL.rstrip('/')}/api/questions/{detail['question_id']}",
+                            timeout=HTTP_TIMEOUT_SECONDS,
+                        )
+                        if response.status_code != 200:
+                            continue
+                        graph_question = response.json()
+                        detail["text"] = str(graph_question.get("text") or detail["question_id"])
+                        detail["answer"] = graph_question.get("answer")
+                        detail["knowledge_id"] = detail["knowledge_id"] or graph_question.get("knowledge_id")
+                    except (requests.RequestException, ValueError):
+                        continue
             except Exception:
                 # Older/test databases may not contain the question tables yet.
                 details = [{"question_id": question_id, "text": question_id, "answer": None, "knowledge_id": None}
