@@ -187,13 +187,15 @@ const StudentPage = {
         };
         content.innerHTML = renderMap[page]();
         if (page === 'report') this.initReportCharts();
-        if (page === 'path') this.initPathCharts();
+        if (page === 'path') {
+            this.initPathCharts();
+            this._loadStudentHomework();
+        }
     },
     
     renderHome() {
         StudentPage._loadHomeStats();
         StudentPage._loadHomeRecommend();
-        StudentPage._loadStudentHomework();
         return `
         <div class="space-y-4">
             <div onclick="StudentPage.navigate('camera')" class="card-hover bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl p-5 cursor-pointer shadow-soft">

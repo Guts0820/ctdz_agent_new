@@ -30,4 +30,5 @@ test('student homepage fetches teacher batches and submits text answers through 
     assert.match(api, /submitTextAnswer/);
     assert.match(api, /batch_id: batchId/);
     assert.match(api, /question_id: questionId/);
+    assert.match(student, /page === 'path'[\s\S]*_loadStudentHomework\(\)/);
 });
