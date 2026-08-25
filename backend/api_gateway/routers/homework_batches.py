@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
+from backend.api_gateway.services.gateway_database import get_gateway_db
 
 from backend.api_gateway.models import BatchResponse, CreateBatchRequest, ReleasePartialRequest
 from backend.api_gateway.services.teacher_client import (
@@ -6,6 +7,7 @@ from backend.api_gateway.services.teacher_client import (
     release_batch,
     release_partial_batch,
     list_batches,
+    list_student_batches,
     list_batch_submissions,
     review_batch_submission,
 )
@@ -22,6 +24,15 @@ def create_homework_batch(request: CreateBatchRequest) -> BatchResponse:
 @router.get("")
 def get_homework_batches(teacher_id: str | None = Query(None), class_id: str | None = Query(None)):
     return list_batches(teacher_id=teacher_id, class_id=class_id)
+
+
+@router.get("/student/{student_id}/homework_batches")
+def get_student_homework_batches(student_id: str):
+    with get_gateway_db() as connection:
+        row = connection.execute("SELECT student_class FROM students WHERE student_id = ?", (student_id,)).fetchone()
+    if not row or not row[0]:
+        raise HTTPException(status_code=404, detail="未找到学生班级信息")
+    return list_student_batches(str(row[0]))
 
 
 @router.post("/{batch_id}/release")

@@ -20,3 +20,14 @@ test('batch cards and partial release use current batch question details', () =>
     assert.match(partialSection, /this\.batches.*find/);
     assert.doesNotMatch(partialSection, /getQuestionsForBatch/);
 });
+
+test('student homepage fetches teacher batches and submits text answers through the normal pipeline', () => {
+    const student = fs.readFileSync(path.join(__dirname, '../js/student.js'), 'utf8');
+    const api = fs.readFileSync(path.join(__dirname, '../js/api.js'), 'utf8');
+    assert.match(student, /_loadStudentHomework\(\)/);
+    assert.match(student, /submitHomeworkAnswer/);
+    assert.match(api, /getStudentHomeworkBatches/);
+    assert.match(api, /submitTextAnswer/);
+    assert.match(api, /batch_id: batchId/);
+    assert.match(api, /question_id: questionId/);
+});

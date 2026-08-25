@@ -108,6 +108,21 @@ def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> 
     return BatchListResponse(data=result, total=len(result))
 
 
+def list_student_batches(class_id: str) -> dict:
+    """Return class batches for student answering; release state only governs answer visibility."""
+    batches = list_batches(class_id=class_id)
+    visible = []
+    for batch in batches.data:
+        item = batch.model_dump()
+        item["question_details"] = [
+            {"question_id": detail["question_id"], "text": detail["text"], "knowledge_id": detail.get("knowledge_id")}
+            for detail in item["question_details"]
+        ]
+        if item["question_ids"]:
+            visible.append(item)
+    return {"data": visible, "total": len(visible)}
+
+
 def release_batch(batch_id: str) -> dict:
     with get_teacher_db() as connection:
         if not connection.execute(

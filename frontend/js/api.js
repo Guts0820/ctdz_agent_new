@@ -83,6 +83,24 @@ const Api = {
         });
     },
 
+    async getStudentHomeworkBatches(studentId) {
+        return this.fetch('/student/' + encodeURIComponent(studentId) + '/homework_batches');
+    },
+
+    async submitTextAnswer(studentId, batchId, questionId, questionText, answer, grade) {
+        return this.fetch('/v1/submit', {
+            method: 'POST',
+            body: JSON.stringify({
+                student_id: studentId,
+                batch_id: batchId,
+                question_id: questionId,
+                original_question: questionText,
+                student_write: answer,
+                grade: grade || '三年级'
+            })
+        });
+    },
+
     async getClasses(teacherId) {
         return this.fetch('/students/classes' + (teacherId ? '?teacher_id=' + encodeURIComponent(teacherId) : ''));
     },

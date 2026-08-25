@@ -61,6 +61,10 @@ def list_batches(teacher_id: str | None = None, class_id: str | None = None) -> 
     return _request("GET", path)
 
 
+def list_student_batches(class_id: str) -> dict[str, Any]:
+    return _request("GET", f"/internal/api/v1/teacher/homework_batch/student_batches?class_id={class_id}")
+
+
 def list_batch_submissions(batch_id: str) -> dict[str, Any]:
     return _request("GET", f"/internal/api/v1/teacher/homework_batch/{batch_id}/submissions")
 

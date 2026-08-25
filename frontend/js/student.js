@@ -193,6 +193,7 @@ const StudentPage = {
     renderHome() {
         StudentPage._loadHomeStats();
         StudentPage._loadHomeRecommend();
+        StudentPage._loadStudentHomework();
         return `
         <div class="space-y-4">
             <div onclick="StudentPage.navigate('camera')" class="card-hover bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl p-5 cursor-pointer shadow-soft">
@@ -1231,6 +1232,14 @@ const StudentPage = {
                 <div class="font-bold text-lg">🛤️ 学习路径推荐</div>
                 <div class="text-sm opacity-90 mt-1">按当前掌握度、复习优先级和前置关系生成</div>
             </div>
+
+            <div class="bg-white rounded-2xl p-4 shadow-soft border border-green-100">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="font-bold">📚 老师布置的作业</div>
+                    <span class="text-xs text-gray-400">直接输入答案</span>
+                </div>
+                <div id="student-homework-container" class="space-y-3"><div class="text-xs text-gray-400 text-center py-2">加载中...</div></div>
+            </div>
             <div class="bg-white rounded-2xl p-4 shadow-soft">
                 <div class="font-bold mb-3">💡 学习路径说明</div>
                 <div class="text-sm text-gray-600 space-y-2">
@@ -1242,6 +1251,50 @@ const StudentPage = {
                 <div class="text-center text-gray-400 py-4">加载中...</div>
             </div>
         </div>`;
+    },
+
+    async _loadStudentHomework() {
+        const container = document.getElementById('student-homework-container');
+        if (!container) return;
+        const user = MockData.currentUser || {};
+        const studentId = user.userId || user.id;
+        if (!studentId) return;
+        try {
+            const result = await Api.getStudentHomeworkBatches(studentId);
+            const batches = result.data || [];
+            this._studentHomeworkBatches = batches;
+            const safe = this._escapeHtml.bind(this);
+            if (!batches.length) {
+                container.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">暂无已放行作业</div>';
+                return;
+            }
+            container.innerHTML = batches.map(batch => `<div class="border border-gray-100 rounded-xl p-3"><div class="flex justify-between text-sm font-medium"><span>作业 ${safe(batch.batch_id)}</span><span class="text-xs text-gray-400">${safe(batch.batch_date || '')}</span></div><div class="space-y-2 mt-2">${(batch.question_details || []).map((question, index) => `<div class="rounded-lg bg-gray-50 p-2" data-homework-question="${safe(question.question_id)}"><div class="text-sm text-gray-800"><span class="text-gray-400 mr-1">${index + 1}.</span>${safe(question.text || question.question_id)}</div><div class="flex gap-2 mt-2"><input type="text" class="homework-answer-input flex-1 border rounded-lg px-2 py-1.5 text-sm" placeholder="输入答案"><button type="button" class="homework-submit-btn bg-green-600 text-white rounded-lg px-3 py-1.5 text-sm" onclick="StudentPage.submitHomeworkAnswer('${safe(batch.batch_id)}','${safe(question.question_id)}', this)">提交</button></div><div class="homework-feedback text-xs mt-2 hidden"></div></div>`).join('')}</div></div>`).join('');
+        } catch (error) {
+            container.innerHTML = `<div class="text-xs text-red-500 text-center py-2">作业加载失败：${this._escapeHtml(error.message || '请稍后重试')}</div>`;
+        }
+    },
+
+    async submitHomeworkAnswer(batchId, questionId, button) {
+        const wrapper = button.closest('[data-homework-question]');
+        const input = wrapper && wrapper.querySelector('.homework-answer-input');
+        const feedback = wrapper && wrapper.querySelector('.homework-feedback');
+        const batch = (this._studentHomeworkBatches || []).find(item => item.batch_id === batchId);
+        const question = batch && (batch.question_details || []).find(item => item.question_id === questionId);
+        const answer = input && input.value.trim();
+        if (!question || !answer) { if (feedback) { feedback.textContent = '请输入答案'; feedback.className = 'homework-feedback text-xs mt-2 text-red-600'; } return; }
+        button.disabled = true;
+        button.textContent = '批改中';
+        try {
+            const user = MockData.currentUser || {};
+            const result = await Api.submitTextAnswer(user.userId || user.id, batchId, questionId, question.text, answer, user.grade ? `${user.grade}年级` : '三年级');
+            const data = result.data || result;
+            feedback.textContent = data.judge_result === 'correct' ? '回答正确' : `回答错误${data.step_feedback ? '：' + data.step_feedback : ''}`;
+            feedback.className = `homework-feedback text-xs mt-2 ${data.judge_result === 'correct' ? 'text-green-600' : 'text-red-600'}`;
+            if (data.judge_result === 'wrong') input.classList.add('border-red-400');
+        } catch (error) {
+            feedback.textContent = '提交失败：' + (error.message || '请重试');
+            feedback.className = 'homework-feedback text-xs mt-2 text-red-600';
+        } finally { button.disabled = false; button.textContent = '提交'; }
     },
 
     _pathStageMeta(stage) {

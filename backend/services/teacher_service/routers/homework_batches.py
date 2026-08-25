@@ -5,6 +5,7 @@ from backend.services.teacher_service.homework_batch_service import (
     release_batch,
     release_partial_batch,
     list_batches,
+    list_student_batches,
     list_batch_submissions,
     review_submission,
 )
@@ -28,6 +29,11 @@ def create_homework_batch(request: CreateBatchRequest) -> BatchResponse:
 @router.get("", response_model=BatchListResponse)
 def get_homework_batches(teacher_id: str | None = Query(None), class_id: str | None = Query(None)) -> BatchListResponse:
     return list_batches(teacher_id=teacher_id, class_id=class_id)
+
+
+@router.get("/student_batches")
+def get_student_batches(class_id: str = Query(...)) -> dict:
+    return list_student_batches(class_id)
 
 
 @router.post("/{batch_id}/release")
