@@ -148,6 +148,48 @@ def test_mastery_update_uses_priority_model_and_invalidates_daily_snapshot():
     assert repository.saved is not None
 
 
+def test_never_corrected_knowledge_point_is_not_treated_as_forgetting_safe():
+    """只有错误证据、从未答对的知识点必须保留高遗忘风险，答对一次后风险才下降。"""
+    calculator = PriorityCalculator()
+    calculated_at = datetime(2026, 8, 24, 10, 5)
+    wrong_only = KnowledgeStateInput(
+        student_id="S1", knowledge_point_id="K1", correct_count=0, wrong_count=1,
+        correct_streak=0, wrong_streak=1, importance=0.8,
+        evidence=[
+            PracticeEvidence(is_correct=False, occurred_at=datetime(2026, 8, 24, 9), error_severity=0.8),
+        ],
+    )
+    corrected = KnowledgeStateInput(
+        student_id="S1", knowledge_point_id="K1", correct_count=1, wrong_count=1,
+        correct_streak=1, wrong_streak=0, importance=0.8,
+        evidence=[
+            PracticeEvidence(is_correct=False, occurred_at=datetime(2026, 8, 24, 9), error_severity=0.8),
+            PracticeEvidence(is_correct=True, occurred_at=datetime(2026, 8, 24, 10)),
+        ],
+    )
+
+    before = calculator.calculate(wrong_only, calculated_at.date(), calculated_at)
+    after = calculator.calculate(corrected, calculated_at.date(), calculated_at)
+
+    assert before.mastery.retention == 0.0
+    assert before.components.forgetting_risk > after.components.forgetting_risk
+    assert after.priority < before.priority
+
+
+def test_unassessed_knowledge_point_keeps_neutral_priority():
+    """没有任何作答证据的知识点不参与遗忘风险，优先级保持中性。"""
+    unassessed = KnowledgeStateInput(
+        student_id="S1", knowledge_point_id="K1", correct_count=0, wrong_count=0,
+        correct_streak=0, wrong_streak=0, importance=0.8, evidence=[],
+    )
+    calculated_at = datetime(2026, 8, 24, 10, 5)
+
+    result = PriorityCalculator().calculate(unassessed, calculated_at.date(), calculated_at)
+
+    assert result.components.forgetting_risk == 0.0
+    assert result.priority < 30
+
+
 def test_correction_immediately_refreshes_all_related_knowledge_points():
     requests = []
     service = SessionService.__new__(SessionService)

@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta
 
 from backend.services.review_service.datahub.core import learning_path
 from backend.services.review_service.review.repositories import Neo4jRepository
@@ -146,6 +147,10 @@ def test_learning_path_keeps_sqlite_order_when_graph_details_are_unavailable(tmp
 
 def test_wrong_answer_then_review_evidence_refreshes_the_next_learning_path(tmp_path, monkeypatch):
     database = tmp_path / "learning-path-e2e.db"
+    # 证据时间与业务时钟一起固定：遗忘风险按 days_since_correct 增长，
+    # 测试结论不得随运行日期漂移。
+    wrong_at = datetime(2026, 8, 24, 9, 0, 0)
+    review_at = datetime(2026, 8, 24, 10, 0, 0)
     with sqlite3.connect(database) as connection:
         connection.executescript(
             """
@@ -165,9 +170,12 @@ def test_wrong_answer_then_review_evidence_refreshes_the_next_learning_path(tmp_
                 mastery_status TEXT, correct_count INT, wrong_count INT, master_level REAL,
                 updated_at TEXT
             );
-            INSERT INTO question_knowledge_mapping VALUES ('Q1', 'K1');
-            INSERT INTO answer_history VALUES ('S001', 'Q1', 0, '2026-08-24T09:00:00', '[{"level1":"计算"}]');
             """
+        )
+        connection.execute("INSERT INTO question_knowledge_mapping VALUES ('Q1', 'K1')")
+        connection.execute(
+            "INSERT INTO answer_history VALUES (?, ?, ?, ?, ?)",
+            ("S001", "Q1", 0, wrong_at.isoformat(), '[{"level1":"计算"}]'),
         )
     monkeypatch.setattr("backend.services.review_service.review.repositories.REVIEW_DATABASE", str(database))
     monkeypatch.setattr(learning_path, "DATABASE_PATH", str(database))
@@ -177,15 +185,17 @@ def test_wrong_answer_then_review_evidence_refreshes_the_next_learning_path(tmp_
         lambda *_args, **_kwargs: [{"knowledge_id": "K1", "title": "口算练习", "prerequisites": []}],
     )
 
-    priority_service = PriorityService(Neo4jRepository(), PriorityCalculator())
+    repository = Neo4jRepository()
+    monkeypatch.setattr(repository, "now", lambda: review_at + timedelta(minutes=5))
+    priority_service = PriorityService(repository, PriorityCalculator())
     priority_service.update_mastery(MasteryUpdateRequest(student_id="S001", knowledge_id="K1", is_correct=False))
     path_before_review = learning_path.LearningPathRecommender().generate_contract_path("S001")
 
     with sqlite3.connect(database) as connection:
         connection.execute("INSERT INTO review2_session VALUES ('RS1', 'S001')")
         connection.execute(
-            """INSERT INTO review2_attempt VALUES
-               ('RS1', 'Q1', 1, '2026-08-24T10:00:00', NULL, NULL, NULL, NULL)"""
+            "INSERT INTO review2_attempt VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL)",
+            ("RS1", "Q1", 1, review_at.isoformat()),
         )
     priority_service.update_mastery(MasteryUpdateRequest(student_id="S001", knowledge_id="K1", is_correct=True))
     path_after_review = learning_path.LearningPathRecommender().generate_contract_path("S001")

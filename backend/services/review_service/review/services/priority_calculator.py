@@ -98,6 +98,7 @@ class PriorityCalculator:
             days_since_correct = max(0.0, (calculated_at - correct_times[-1]).total_seconds() / 86400)
             retention = 100 * math.exp(-days_since_correct / stability_days)
         else:
+            # 从未答对：记忆保持度为 0，该知识点不因“还没到遗忘点”而降低复习优先级。
             retention = 0.0
 
         error_severity = weighted_error_severity(severities)
@@ -120,11 +121,13 @@ class PriorityCalculator:
         skill_mastery = 0.5 * accuracy + 0.3 * consistency + 0.2 * error_control
         skill_gap = 100 - skill_mastery
         latest_is_wrong = bool(evidence and not evidence[-1].is_correct)
+        # 有作答证据就必须参与遗忘风险：从未答对时 retention 为 0，风险取上限；
+        # 完全没有证据的知识点保持中性，不用虚假的遗忘风险抬高优先级。
         forgetting_risk = clip(
             100 - retention
             + (10 if latest_is_wrong else 0)
             + 5 * min(state.wrong_streak, 3)
-        ) if correct_times else 0.0
+        ) if total > 0 else 0.0
         trend = trend_risk(results)
         priority = clip(
             0.35 * skill_gap
