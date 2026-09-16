@@ -36,7 +36,7 @@ D:\ctdz_agent_venv\Scripts\python.exe -m uvicorn app.main:app --port 8089 --work
 
 ## 本地交互识别
 
-运行 `..\.venv311\Scripts\python.exe interactive_ocr.py`，输入图片绝对路径；输入 `exit` 结束。每次识别会在 `recognition_results/` 保留兼容 Markdown 和完整响应 JSON，同时在终端直接显示通过 JSON Schema 校验的 `analysis_input`，供判题模块使用。
+运行 `D:\ctdz_agent_venv\Scripts\python.exe interactive_ocr.py`（与上面的统一联调使用同一个 Python 3.11 虚拟环境），输入图片绝对路径；输入 `exit` 结束。每次识别会在 `recognition_results/` 保留兼容 Markdown 和完整响应 JSON，同时在终端直接显示通过 JSON Schema 校验的 `analysis_input`，供判题模块使用。
 
 ## 下游契约
 

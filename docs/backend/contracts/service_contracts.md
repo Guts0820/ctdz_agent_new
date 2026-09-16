@@ -1,5 +1,14 @@
 # AI小学数学错题订正系统 - 服务间契约定义
 
+> ⚠️ **本文是最初的设计稿，不是当前代码的现状。** 保留它只为追溯设计意图。
+>
+> 现状请以 `docs/项目完整工作流.md` 和对应模块的 `AGENTS.md` / `docs/README.md` 为准。已确认与本仓库实现不符的典型点：
+>
+> - 第二节调用链把 OCR 画在 Analysis Service 内部，并包含 `is_copy` 抄袭分支 → 实际 OCR 是独立服务 `:8089`，由网关编排；Analysis Service 不接收图片；抄袭分支已取消。
+> - 3.1 的 `/process` 请求体包含 `image` 且教学路径含 `GUIDE` 模式 → 实际请求体为题干 + 学生作答 + 标准答案/步骤，教学分档只有 `BASIC`/`STANDARD`/`ADVANCED`。
+> - 3.5 State Service 生成固定 Day1/Day3/Day7 计划 → 实际委托 Review Service 的按日期幂等每日计划。
+> - 第四节的数据库写入契约、第五节的错误码表、第六节的超时与重试策略、第七节的安全契约（JWT/API Key、AES-256）和第八节的日志契约均为设计值：网关实际的错误映射见 `api_gateway/services/downstream.py`，且没有任何重试逻辑。
+
 ## 一、整体架构概览
 
 ```

@@ -13,6 +13,7 @@
 | Teaching Service | 8084 | 生成教学反馈 |
 | Teacher Service | 8090 | 教师端作业批次管理 |
 | State Service | 8085 | 更新掌握状态 |
+| Review Scheduler | 8086 | 复习计划定时任务 |
 | Review Service | 8087 | 复习计划、会话与订正 |
 | Knowledge Graph Service | 8007 | Neo4j 题目与标准答案查询 |
 | Handwriting OCR Service | 8089 | 图片识别与结构化输出 |

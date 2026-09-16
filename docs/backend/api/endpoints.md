@@ -1,5 +1,16 @@
 # AI小学数学错题订正系统 - REST API 端点定义
 
+> ⚠️ **本文是最初的设计稿，不是当前代码的现状。** 保留它只为追溯设计意图。
+>
+> 现状请以 `docs/项目完整工作流.md` 和对应模块的 `AGENTS.md` / `docs/README.md` 为准。已确认与本仓库实现不符的典型点：
+>
+> - 疑似抄袭判断（`copy_warning`、`is_copy` 判定）和苏格拉底引导**已明确取消**；`is_copy` 现在只是响应里的透传字段，没有判定逻辑。
+> - 固定 `Day1/Day3/Day7` 复习计划已由 Review 2.0 取代：实际接口是 `/api/review-plans`、`/api/review-sessions`、`/api/attempts`、`/api/priority-runs`（网关代理到 `review_service:8087`）。
+> - 管理端知识点/错因库/题目 CRUD 与频次限制配置接口**未实现**；知识图谱侧只有 `GET /api/questions`、`POST /api/questions/{id}/review`、`POST /api/questions/{id}/merge`、`GET /api/audit/logs`。
+> - Webhook 事件（`/webhook/v1/*`）**未实现**。
+> - 提交响应不返回未放行题目的标准答案：网关按批次放行状态做字段级脱敏，实际字段以 `submission_service.py` 为准。
+> - 本文 1.1/1.3 的响应示例早于当前实现，`/api/v1/student/{id}/review` 这类固定阶段接口已不再被前端使用。
+
 ## 基础路径
 所有端点前缀: `/api/v1`
 

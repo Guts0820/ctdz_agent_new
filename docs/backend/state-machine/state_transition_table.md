@@ -1,5 +1,14 @@
 # AI小学数学错题订正系统 - 状态机转换表
 
+> ⚠️ **本文是最初的设计稿，不是当前代码的现状。** 保留它只为追溯设计意图。
+>
+> 现状请以 `docs/项目完整工作流.md` 和对应模块的 `AGENTS.md` / `docs/README.md` 为准。已确认与本仓库实现不符的典型点：
+>
+> - `GUIDE_MODE`（苏格拉底引导）与第七节抄袭检测状态机**已明确取消**，主流程没有这两个分支。
+> - 固定 `Day1/Day3/Day7` 复习状态机已由 Review 2.0 取代：复习计划、会话、答题与订正分别落在 `review2_plan` / `review2_session` / `review2_attempt`，旧的 `review_plan` / `push_record` 不再驱动主链路。
+> - 第四节掌握度公式 `master_level = correct_count * 0.5 / (correct_count + wrong_count)` **已废弃**。实际实现是两套：`review_service/mastery/calculator.py`（0–100，含一致性、保持度、错误控制，供成长报告和五维雷达）和 `review/services/priority_calculator.py`（证据加权，供复习选题排序）；`knowledge_mastery` 同时保存 `master_level`(0–1)、`mastery`、`priority` 和分量 JSON。
+> - 第六节频次控制、第九节错误回流的阈值与通知对象为设计值，实际以 `teaching_service` 频控接口和 `review_service` 状态更新为准。
+
 ## 一、系统状态定义
 
 ### 1.1 状态枚举

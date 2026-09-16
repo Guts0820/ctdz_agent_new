@@ -1,3 +1,33 @@
+-- ============================================================================
+-- ⚠️ 本文是设计稿，不是运行 Schema。
+--
+-- 本文件是项目最初的数据设计稿（MySQL 语法），没有任何脚本执行它。
+-- SQLite 运行库的表结构由 backend/tools/init_sqlite_database.py 创建（当前 25 张表）。
+-- 修改数据库结构请改那个脚本；本文件只在追溯设计意图时参考。
+--
+-- 已确认与实际运行库的差异：
+--   1. 运行库多出 3 张表：teacher_class、teacher_question_import、
+--      teacher_question_import_item（教师班级与题目录入暂存）。
+--   2. 下列表字段不同（左为本文设计稿，右为运行库实际字段）：
+--      question                   question_answer/question_difficulty/question_grade
+--                                 -> answer/difficulty/grade/question_type/textbook_version
+--      knowledge                  parent_id/knowledge_grade/explanation/common_errors/
+--                                 forbidden_explanation/example/teaching_tips
+--                                 -> knowledge_name/grade/difficulty/is_core
+--      error_bank                 typical_example/ai_prompt/applicable_grade/knowledge_scope/
+--                                 judgment_criteria/updated_at
+--                                 -> error_description/error_suggestion
+--      answer_history             review_plan_id/original_image_url -> batch_id
+--      push_record                push_question_id/created_at -> pushed_at
+--      frequency_limit            daily_limit/weekly_limit -> 运行库无这两个字段
+--      question_knowledge_mapping knowledge_weight -> mapping_weight（另有代理主键 qkm_id）
+--      mistake_case_error / mistake_case_knowledge : 运行库另有代理主键 mce_id / mck_id
+--   3. 运行库不保存题目指纹：canonical 题目与 fingerprint 唯一约束在 Neo4j
+--      （Question.fingerprint），见 knowledge_graph_service/routers/internal_questions.py。
+--
+-- 现状请以 docs/项目完整工作流.md 和各服务 docs/README.md 为准。
+-- ============================================================================
+
 CREATE TABLE students (
     student_id VARCHAR(32) PRIMARY KEY COMMENT '学生id',
     student_birthdate DATE COMMENT '学生出生年月日',

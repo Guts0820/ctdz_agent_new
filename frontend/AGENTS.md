@@ -6,7 +6,7 @@
 
 ## 架构
 
-`index.html` 引入 Tailwind CSS 和 Chart.js CDN 资源，以及 `js/` 下的脚本。`app.js` 管理视图，`login.js` 基于 Mock 数据处理登录，学生、教师和管理员页面分别由对应脚本渲染；`api.js` 以 `http://127.0.0.1:8000/api` 封装后端调用。部分功能仍使用 `mock-data.js`，OCR 上传直连 `:8089`。
+`index.html` 引入 Tailwind CSS 和 Chart.js CDN 资源，以及 `js/` 下的脚本。`app.js` 管理视图，`login.js` 基于 Mock 数据处理登录，学生、教师和管理员页面分别由对应脚本渲染；`api.js` 以 `http://127.0.0.1:8000/api` 封装后端调用。部分功能仍使用 `mock-data.js`；图片统一经 `:8000` 网关提交，前端不直连 OCR 服务 `:8089`（`tests/ocr-upload-policy.test.js` 会校验这一点）。
 
 ## 目录结构
 
@@ -20,11 +20,11 @@
 
 ## 开发规范
 
-使用原生 HTML、CSS 和 JavaScript，保持现有全局对象与函数命名风格。OCR 上传使用 `OcrUploadPolicy`：置信度必须达到 `0.95`，低于阈值提示“照片模糊，请重新上传”，初次上传失败后最多重传三次；低置信或服务失败不得显示模拟判题结果。API 失败必须有用户可理解的处理；不要将密钥、真实学生数据或服务端连接凭据放入前端。使用 CDN 的资源变更需考虑在线依赖；提交前避免把纯演示 Mock 误接入真实业务流程。
+使用原生 HTML、CSS 和 JavaScript，保持现有全局对象与函数命名风格。OCR 上传使用 `OcrUploadPolicy`：学生作答图片的置信度门槛是 `0.80`（教师标准答案导入才是 `0.95`），低于阈值提示“照片模糊，请重新上传”，初次上传失败后最多重传三次；低置信或服务失败不得显示模拟判题结果。API 失败必须有用户可理解的处理；不要将密钥、真实学生数据或服务端连接凭据放入前端。使用 CDN 的资源变更需考虑在线依赖；提交前避免把纯演示 Mock 误接入真实业务流程。
 
 ## 常用命令
 
-在本目录执行 `python -m http.server 3000` 启动静态服务器，或双击 `启动Demo.bat`。运行 `node --test tests\ocr-upload-policy.test.js` 验证 OCR 上传阈值和重传上限。完整联调从仓库根目录执行 `python backend\start_all.py`，前端独立启动后访问 `http://127.0.0.1:3000/`。
+在本目录执行 `python -m http.server 3000` 启动静态服务器，或双击 `启动Demo.bat`。运行 `node --test` 自动发现并执行 `tests/` 下的 5 个测试文件（26 个用例，含 OCR 上传阈值与重传上限）；后端回归测试在仓库根目录执行 `python -m pytest backend/tests -q`。完整联调从仓库根目录执行 `python backend\start_all.py`，前端独立启动后访问 `http://127.0.0.1:3000/`。
 
 ## 修改指南
 
