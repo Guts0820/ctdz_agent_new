@@ -1,10 +1,17 @@
-"""统一执行网关下游调用并转换传输层错误。"""
+"""统一执行网关下游调用并转换传输层错误。
 
+每次调用都会打一条 ``submit.stage`` 事件（``stage`` / ``elapsed_ms`` / ``ok``，
+失败时附 ``status_code``），压测脚本按时间窗口或 ``request_id`` 聚合出各阶段耗时占比。
+"""
+
+import time
 from collections.abc import Callable
 from typing import Any
 
 import requests
 from fastapi import HTTPException
+
+from backend.shared.observability import elapsed_ms, log_event
 
 
 def _response_detail(error: requests.HTTPError) -> str:
@@ -17,6 +24,23 @@ def _response_detail(error: requests.HTTPError) -> str:
 
 
 def execute_downstream(stage: str, operation: Callable[[], Any]) -> Any:
+    start = time.perf_counter()
+    try:
+        result = _invoke_downstream(stage, operation)
+    except HTTPException as error:
+        log_event(
+            "submit.stage",
+            stage=stage,
+            elapsed_ms=elapsed_ms(start),
+            ok=False,
+            status_code=error.status_code,
+        )
+        raise
+    log_event("submit.stage", stage=stage, elapsed_ms=elapsed_ms(start), ok=True)
+    return result
+
+
+def _invoke_downstream(stage: str, operation: Callable[[], Any]) -> Any:
     try:
         return operation()
     except HTTPException:

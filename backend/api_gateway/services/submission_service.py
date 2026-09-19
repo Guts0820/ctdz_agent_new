@@ -244,8 +244,12 @@ def _scope_validation_fallback(request: SubmitRequest, analysis: dict[str, Any],
     )
 
 
-def process_submission(request: SubmitRequest) -> SubmitResponse:
+def process_submission(request: SubmitRequest, request_id: Optional[str] = None) -> SubmitResponse:
     """Run the submission pipeline and shape the existing gateway response."""
+    from backend.shared.observability import set_request_id
+    from backend.shared.id_utils import generate_id
+
+    set_request_id(request_id or generate_id("REQ"))
     try:
         prepared = prepare_judging_input(request)
         analysis = execute_downstream("判题服务", lambda: analyze_submission(prepared["analysis_request"]))

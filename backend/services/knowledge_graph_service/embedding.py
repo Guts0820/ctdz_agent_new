@@ -6,6 +6,7 @@ from typing import Any
 from openai import OpenAI
 
 from backend.shared.http_client import create_direct_httpx_client
+from backend.shared.observability import log_event
 from backend.shared.config import (
     QWEN_EMBEDDING_API_KEY,
     QWEN_EMBEDDING_BASE_URL,
@@ -53,6 +54,7 @@ class QwenEmbeddingClient:
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+        log_event("model.call", kind="embedding", model=self.model, batch_size=len(texts))
         response = self._get_client().embeddings.create(
             model=self.model,
             input=texts,

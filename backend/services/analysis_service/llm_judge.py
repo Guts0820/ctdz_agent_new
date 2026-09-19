@@ -10,6 +10,7 @@ from openai import OpenAI
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.shared.http_client import create_direct_httpx_client
+from backend.shared.observability import log_event
 
 
 SERVICE_DIR = Path(__file__).resolve().parent
@@ -75,6 +76,11 @@ def _client() -> OpenAI:
     )
 
 
+def _record_model_call(purpose: str, model: str) -> None:
+    """Report one outbound model call so load tests can count Qwen usage."""
+    log_event("model.call", kind="llm", model=model, purpose=purpose)
+
+
 def _build_user_prompt(
     question: str,
     student_answer: str,
@@ -133,6 +139,7 @@ def judge_with_llm(
     """调用本模块配置的 LLM，并返回通过 schema 校验的结果。"""
 
     model = _setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus"
+    _record_model_call("judge", model)
     completion = _client().chat.completions.create(
         model=model,
         temperature=0,
@@ -180,8 +187,10 @@ def judge_unseen_question_with_llm(*, question: str, student_answer: str) -> dic
   "confidence": 0.0
 }}
 无法可靠识别题意或作答时，judge_result 必须为 unknown，confidence 必须低于 0.5。"""
+    unseen_model = _setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus"
+    _record_model_call("judge_unseen", unseen_model)
     completion = _client().chat.completions.create(
-        model=_setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus",
+        model=unseen_model,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
@@ -226,8 +235,10 @@ def rerank_question_candidates(*, question: str, candidates: list[dict]) -> dict
   "reason": "简短匹配理由"
 }}
 """
+    rerank_model = _setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus"
+    _record_model_call("rerank", rerank_model)
     completion = _client().chat.completions.create(
-        model=_setting("ANALYSIS_LLM_MODEL") or _setting("LLM_MODEL") or "qwen3.7-plus",
+        model=rerank_model,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[

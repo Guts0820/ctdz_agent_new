@@ -5,6 +5,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 from backend.shared.http_client import create_direct_httpx_client
+from backend.shared.observability import log_event
 
 # Keep the development configuration in ``backend/.env`` while allowing
 # deployment environments to provide the variable directly.
@@ -61,8 +62,10 @@ def get_default_system_prompt() -> str:
 
 
 def call_llm(system_prompt: str, user_prompt: str, model: str | None = None) -> str:
+    resolved_model = get_llm_model(model)
+    log_event("model.call", kind="llm", model=resolved_model)
     completion = get_llm_client().chat.completions.create(
-        model=get_llm_model(model),
+        model=resolved_model,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
