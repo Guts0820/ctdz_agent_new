@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.shared.id_utils import generate_id
 from backend.shared.llm_client import call_llm
+from backend.shared.config import SERVICE_BIND_HOST
 
 
 app = FastAPI(title="Teaching Service", version="1.1.0")
@@ -339,4 +340,4 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8084)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8084)

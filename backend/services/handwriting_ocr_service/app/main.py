@@ -7,7 +7,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from dotenv import load_dotenv
 from starlette.concurrency import run_in_threadpool
 
-from app.config import Settings
+from app.config import SERVICE_BIND_HOST, Settings
 from app.models import RecognitionResult
 from app.services.paddleocr_vl import PaddleOCRVLEngine
 from app.services.qwen_vision import QwenVisionEngine
@@ -101,4 +101,4 @@ async def recognize_handwriting(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8089)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8089)

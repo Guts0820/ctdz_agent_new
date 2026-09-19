@@ -2,6 +2,7 @@ import requests
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from backend.shared.config import SERVICE_BIND_HOST
 
 def convert_difficulty(value) -> str:
     if isinstance(value, str):
@@ -104,4 +105,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8083)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8083)

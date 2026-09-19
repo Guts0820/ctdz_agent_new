@@ -7,6 +7,7 @@ from backend.services.teacher_service.routers.standard_answers import router as 
 from backend.services.teacher_service.routers.question_imports import router as question_imports_router
 from backend.services.teacher_service.routers.questions import router as questions_router
 
+from backend.shared.config import SERVICE_BIND_HOST
 
 app = FastAPI(title="Teacher Service", version="1.0.0")
 app.include_router(homework_batches_router)
@@ -25,4 +26,4 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("API_PORT", "8090")))
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=int(os.getenv("API_PORT", "8090")))

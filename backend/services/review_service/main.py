@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from backend.services.review_service.datahub.core.ability_mapping import ensure_ability_mapping_schema
+from backend.shared.config import SERVICE_BIND_HOST
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -37,4 +38,4 @@ def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8087)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8087)

@@ -10,6 +10,7 @@ from backend.services.knowledge_graph_service.routers.error_causes import router
 from backend.services.knowledge_graph_service.routers.internal_questions import router as internal_questions_router
 from backend.services.knowledge_graph_service.routers.admin_questions import router as admin_questions_router
 from backend.services.knowledge_graph_service.vector_index import ensure_vector_index
+from backend.shared.config import SERVICE_BIND_HOST
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -88,6 +89,5 @@ def get_stats():
 
 if __name__ == "__main__":
     import uvicorn
-    host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", 8000))
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=port)

@@ -34,6 +34,7 @@ from backend.services.analysis_service.llm_judge import (
 )
 from backend.services.analysis_service.question_retrieval import resolve_question_reference
 from backend.shared.config import KNOWLEDGE_GRAPH_URL, HTTP_TIMEOUT_SECONDS
+from backend.shared.config import SERVICE_BIND_HOST
 
 
 app = FastAPI(title="Judging Service", version="1.0.0")
@@ -385,4 +386,4 @@ def health_check() -> dict[str, str]:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8081)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8081)

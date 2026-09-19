@@ -72,6 +72,8 @@ def get_bool(name: str, default: bool = False) -> bool:
 DATABASE_PATH = get_env("DATABASE_PATH", "database/sqlite/example_db.db")
 KNOWLEDGE_CSV_PATH = get_env("KNOWLEDGE_CSV_PATH", "database/seed/knowledge_points.csv")
 API_GATEWAY_HOST = get_env("API_GATEWAY_HOST", "0.0.0.0")
+# 内部服务默认只监听回环地址，堵住绕过网关直连的通道；需要外部访问时用环境变量放开
+SERVICE_BIND_HOST = get_env("SERVICE_BIND_HOST", "127.0.0.1")
 API_GATEWAY_PORT = get_int("API_GATEWAY_PORT", 8000)
 ANALYSIS_SERVICE_URL = get_env("ANALYSIS_SERVICE_URL", "http://127.0.0.1:8081")
 ERROR_ANALYSIS_SERVICE_URL = get_env("ERROR_ANALYSIS_SERVICE_URL", "http://127.0.0.1:8082")

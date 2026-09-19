@@ -1,4 +1,7 @@
 import os
+
+# 内部服务默认只服务本机，需要外部访问时用环境变量放开
+SERVICE_BIND_HOST = os.getenv("SERVICE_BIND_HOST", "127.0.0.1")
 from dataclasses import dataclass
 
 

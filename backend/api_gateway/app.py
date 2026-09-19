@@ -32,6 +32,7 @@ from backend.api_gateway.routers import (
 # from the application entry module. Route handlers remain in ``routers``.
 from backend.api_gateway.models import SubmitRequest, SubmitResponse
 from backend.api_gateway.services.submission_service import prepare_judging_input, process_submission
+from backend.shared.config import SERVICE_BIND_HOST
 
 
 app = FastAPI(title="AI Math Error Correction System API Gateway", version="1.0.0")
@@ -61,4 +62,4 @@ for router in (
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8000)

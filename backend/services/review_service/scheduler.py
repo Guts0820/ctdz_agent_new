@@ -8,6 +8,7 @@ import time
 from backend.shared.mastery_utils import calculate_mastery
 from backend.shared.id_utils import generate_id
 
+from backend.shared.config import SERVICE_BIND_HOST
 app = FastAPI(title="Review Scheduler", version="1.0.0")
 
 DATABASE = "database/sqlite/example_db.db"
@@ -231,4 +232,4 @@ if __name__ == "__main__":
     scheduler_thread.daemon = True
     scheduler_thread.start()
     
-    uvicorn.run(app, host="0.0.0.0", port=8086)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=8086)
