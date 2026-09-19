@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.api_gateway.routers import (
+    auth,
     error_causes,
     external_error_analysis,
     health,
@@ -39,6 +40,7 @@ app = FastAPI(title="AI Math Error Correction System API Gateway", version="1.0.
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 for router in (
+    auth.router,
     students.router,
     knowledge_points.router,
     questions.router,
