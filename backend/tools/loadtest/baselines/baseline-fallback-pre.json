@@ -1,0 +1,5713 @@
+{
+  "label": "fallback-pre",
+  "started_at": "2026-09-19T10:40:32",
+  "finished_at": "2026-09-19T10:40:40",
+  "duration_s": 7.87,
+  "config": {
+    "base_url": "http://127.0.0.1:8000",
+    "concurrency": 45,
+    "total": 200,
+    "scenario": "mixed",
+    "timeout_s": 180.0,
+    "log_dir": "D:\\ctdz_agent\\backend\\logs"
+  },
+  "health": {
+    "api_gateway": "healthy",
+    "services": {
+      "analysis": {
+        "status": "healthy",
+        "service": "Judging Service",
+        "timestamp": "2026-09-19T10:40:32.425736"
+      },
+      "error_analysis": {
+        "status": "healthy",
+        "service": "Error Analysis Agent"
+      },
+      "knowledge": {
+        "status": "healthy",
+        "service": "Knowledge Service"
+      },
+      "teaching": {
+        "status": "healthy",
+        "service": "Teaching Service"
+      },
+      "teacher": {
+        "status": "ok",
+        "service": "teacher"
+      },
+      "state": {
+        "status": "healthy",
+        "service": "State Service"
+      },
+      "review": {
+        "status": "healthy",
+        "service": "Review Service"
+      },
+      "knowledge_graph": {
+        "status": "healthy",
+        "neo4j": "connected",
+        "node_count": 294
+      }
+    }
+  },
+  "summary": {
+    "requests": 200,
+    "success": 100,
+    "success_rate": 0.5,
+    "throughput_rps": 25.403,
+    "latency_ms": {
+      "count": 200,
+      "min": 311.66,
+      "mean": 1401.85,
+      "p50": 769.2,
+      "p95": 3470.97,
+      "p99": 4413.29,
+      "max": 6163.29
+    },
+    "status_counts": {
+      "200": 100,
+      "422": 100
+    },
+    "outcome_counts": {
+      "ok": 100,
+      "http_4xx": 100
+    },
+    "scenario_mismatch": {
+      "count": 0,
+      "examples": []
+    },
+    "model_calls": {
+      "by_kind": {
+        "llm": 300
+      },
+      "total": 300,
+      "per_request": 1.5,
+      "events_with_request_id": 0
+    },
+    "rate_limit_lines": 0,
+    "stages": {
+      "知识服务": {
+        "calls": 50,
+        "total_ms": 103578.27,
+        "mean_ms": 2071.57,
+        "p50_ms": 2073.93,
+        "p95_ms": 2094.19,
+        "share": 0.4299,
+        "failed_calls": 50
+      },
+      "判题服务": {
+        "calls": 200,
+        "total_ms": 95540.37,
+        "mean_ms": 477.7,
+        "p50_ms": 288.48,
+        "p95_ms": 1408.37,
+        "share": 0.3965,
+        "failed_calls": 0
+      },
+      "错因分析服务": {
+        "calls": 100,
+        "total_ms": 41844.21,
+        "mean_ms": 418.44,
+        "p50_ms": 369.15,
+        "p95_ms": 617.34,
+        "share": 0.1737,
+        "failed_calls": 0
+      }
+    },
+    "stage_coverage": {
+      "submit.stage": 350,
+      "model.call": 300,
+      "window": [
+        "2026-09-19T10:40:30",
+        "2026-09-19T10:40:45"
+      ]
+    },
+    "slowest_requests": [
+      {
+        "request_id": "bench-00021",
+        "latency_ms": 6163.29,
+        "status_code": 422,
+        "stages": {
+          "判题服务": 3231.16,
+          "错因分析服务": 595.0,
+          "知识服务": 2094.06
+        }
+      },
+      {
+        "request_id": "bench-00029",
+        "latency_ms": 5741.31,
+        "status_code": 422,
+        "stages": {
+          "判题服务": 3082.81,
+          "错因分析服务": 316.94,
+          "知识服务": 2073.93
+        }
+      },
+      {
+        "request_id": "bench-00001",
+        "latency_ms": 4413.29,
+        "status_code": 422,
+        "stages": {
+          "判题服务": 319.47,
+          "错因分析服务": 1960.81,
+          "知识服务": 2046.66
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "index": 0,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 1,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 2,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 3,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 4,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 5,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 6,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 7,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 8,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 9,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 10,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 11,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 12,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 13,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 14,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 15,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 16,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 17,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 18,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 19,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 20,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 21,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 22,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 23,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 24,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 25,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 26,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 27,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 28,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 29,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 30,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 31,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 32,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 33,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 34,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 35,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 36,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 37,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 38,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 39,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 40,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 41,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 42,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 43,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 44,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 45,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 46,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 47,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 48,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 49,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 50,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 51,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 52,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 53,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 54,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 55,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 56,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 57,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 58,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 59,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 60,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 61,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 62,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 63,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 64,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 65,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 66,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 67,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 68,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 69,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 70,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 71,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 72,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 73,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 74,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 75,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 76,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 77,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 78,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 79,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 80,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 81,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 82,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 83,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 84,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 85,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 86,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 87,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 88,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 89,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 90,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 91,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 92,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 93,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 94,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 95,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 96,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 97,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 98,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 99,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 100,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 101,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 102,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 103,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 104,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 105,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 106,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 107,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 108,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 109,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 110,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 111,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 112,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 113,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 114,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 115,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 116,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 117,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 118,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 119,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 120,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 121,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 122,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 123,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 124,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 125,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 126,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 127,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 128,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 129,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 130,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 131,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 132,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 133,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 134,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 135,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 136,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 137,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 138,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 139,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 140,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 141,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 142,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 143,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 144,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 145,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 146,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 147,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 148,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 149,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 150,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 151,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 152,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 153,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 154,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 155,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 156,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 157,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 158,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 159,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 160,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 161,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 162,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 163,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 164,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 165,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 166,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 167,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 168,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 169,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 170,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 171,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 172,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 173,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 174,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 175,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 176,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 177,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 178,
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 179,
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 180,
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 181,
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 182,
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 183,
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 184,
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 185,
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 186,
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 187,
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 188,
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 189,
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 190,
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 191,
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 192,
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 193,
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 194,
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 195,
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    },
+    {
+      "index": 196,
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "student_write": "4.8"
+    },
+    {
+      "index": 197,
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "student_write": "0.17"
+    },
+    {
+      "index": 198,
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "student_write": "0.016"
+    },
+    {
+      "index": 199,
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "student_write": "0.217"
+    }
+  ],
+  "requests": [
+    {
+      "index": 0,
+      "request_id": "bench-00000",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 634.22,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 324.49
+      }
+    },
+    {
+      "index": 1,
+      "request_id": "bench-00001",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 4413.29,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 319.47,
+        "错因分析服务": 1960.81,
+        "知识服务": 2046.66
+      }
+    },
+    {
+      "index": 2,
+      "request_id": "bench-00002",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 630.61,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 341.77
+      }
+    },
+    {
+      "index": 3,
+      "request_id": "bench-00003",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1193.88,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 648.39,
+        "错因分析服务": 365.72
+      }
+    },
+    {
+      "index": 4,
+      "request_id": "bench-00004",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 3113.79,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 2795.93
+      }
+    },
+    {
+      "index": 5,
+      "request_id": "bench-00005",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3183.29,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 363.54,
+        "错因分析服务": 604.44,
+        "知识服务": 2058.4
+      }
+    },
+    {
+      "index": 6,
+      "request_id": "bench-00006",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 1376.32,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 1143.47
+      }
+    },
+    {
+      "index": 7,
+      "request_id": "bench-00007",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1109.96,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 414.38,
+        "错因分析服务": 515.24
+      }
+    },
+    {
+      "index": 8,
+      "request_id": "bench-00008",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 631.32,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 328.74
+      }
+    },
+    {
+      "index": 9,
+      "request_id": "bench-00009",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3553.01,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 1023.71,
+        "错因分析服务": 321.61,
+        "知识服务": 2050.22
+      }
+    },
+    {
+      "index": 10,
+      "request_id": "bench-00010",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 632.32,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 470.59
+      }
+    },
+    {
+      "index": 11,
+      "request_id": "bench-00011",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 983.49,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 321.86,
+        "错因分析服务": 492.55
+      }
+    },
+    {
+      "index": 12,
+      "request_id": "bench-00012",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 807.76,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 577.52
+      }
+    },
+    {
+      "index": 13,
+      "request_id": "bench-00013",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3228.7,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 359.15,
+        "错因分析服务": 598.77,
+        "知识服务": 2080.42
+      }
+    },
+    {
+      "index": 14,
+      "request_id": "bench-00014",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 2664.3,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 2357.76
+      }
+    },
+    {
+      "index": 15,
+      "request_id": "bench-00015",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1133.58,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 533.18,
+        "错因分析服务": 397.21
+      }
+    },
+    {
+      "index": 16,
+      "request_id": "bench-00016",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 3669.49,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 3356.01
+      }
+    },
+    {
+      "index": 17,
+      "request_id": "bench-00017",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3975.08,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 1342.72,
+        "错因分析服务": 328.18,
+        "知识服务": 2079.4
+      }
+    },
+    {
+      "index": 18,
+      "request_id": "bench-00018",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 630.68,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 333.14
+      }
+    },
+    {
+      "index": 19,
+      "request_id": "bench-00019",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 941.67,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 327.69,
+        "错因分析服务": 379.0
+      }
+    },
+    {
+      "index": 20,
+      "request_id": "bench-00020",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 1714.62,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 1267.19
+      }
+    },
+    {
+      "index": 21,
+      "request_id": "bench-00021",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 6163.29,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 3231.16,
+        "错因分析服务": 595.0,
+        "知识服务": 2094.06
+      }
+    },
+    {
+      "index": 22,
+      "request_id": "bench-00022",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 2875.2,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 2463.28
+      }
+    },
+    {
+      "index": 23,
+      "request_id": "bench-00023",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1831.5,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 1222.03,
+        "错因分析服务": 355.25
+      }
+    },
+    {
+      "index": 24,
+      "request_id": "bench-00024",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 805.21,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 459.76
+      }
+    },
+    {
+      "index": 25,
+      "request_id": "bench-00025",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3568.36,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 629.48,
+        "错因分析服务": 642.09,
+        "知识服务": 2037.29
+      }
+    },
+    {
+      "index": 26,
+      "request_id": "bench-00026",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 627.63,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 285.38
+      }
+    },
+    {
+      "index": 27,
+      "request_id": "bench-00027",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3534.06,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 2990.4,
+        "错因分析服务": 285.1
+      }
+    },
+    {
+      "index": 28,
+      "request_id": "bench-00028",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 1809.66,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 1408.37
+      }
+    },
+    {
+      "index": 29,
+      "request_id": "bench-00029",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 5741.31,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 3082.81,
+        "错因分析服务": 316.94,
+        "知识服务": 2073.93
+      }
+    },
+    {
+      "index": 30,
+      "request_id": "bench-00030",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 3227.71,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 2878.48
+      }
+    },
+    {
+      "index": 31,
+      "request_id": "bench-00031",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1551.15,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 963.63,
+        "错因分析服务": 310.51
+      }
+    },
+    {
+      "index": 32,
+      "request_id": "bench-00032",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 3113.08,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 2758.16
+      }
+    },
+    {
+      "index": 33,
+      "request_id": "bench-00033",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 4060.78,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 1083.34,
+        "错因分析服务": 613.5,
+        "知识服务": 2079.95
+      }
+    },
+    {
+      "index": 34,
+      "request_id": "bench-00034",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 803.22,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 367.97
+      }
+    },
+    {
+      "index": 35,
+      "request_id": "bench-00035",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1128.25,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 510.74,
+        "错因分析服务": 337.56
+      }
+    },
+    {
+      "index": 36,
+      "request_id": "bench-00036",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 3805.65,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 3407.14
+      }
+    },
+    {
+      "index": 37,
+      "request_id": "bench-00037",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3286.49,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 398.39,
+        "错因分析服务": 510.94,
+        "知识服务": 2093.37
+      }
+    },
+    {
+      "index": 38,
+      "request_id": "bench-00038",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 801.57,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 347.38
+      }
+    },
+    {
+      "index": 39,
+      "request_id": "bench-00039",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1303.47,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 643.62,
+        "错因分析服务": 369.15
+      }
+    },
+    {
+      "index": 40,
+      "request_id": "bench-00040",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 803.8,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 378.72
+      }
+    },
+    {
+      "index": 41,
+      "request_id": "bench-00041",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3242.66,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 394.46,
+        "错因分析服务": 305.04,
+        "知识服务": 2086.02
+      }
+    },
+    {
+      "index": 42,
+      "request_id": "bench-00042",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 804.77,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 262.34
+      }
+    },
+    {
+      "index": 43,
+      "request_id": "bench-00043",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1310.6,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 311.53,
+        "错因分析服务": 448.35
+      }
+    },
+    {
+      "index": 44,
+      "request_id": "bench-00044",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 1106.42,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 364.66
+      }
+    },
+    {
+      "index": 45,
+      "request_id": "bench-00045",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2714.07,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 254.83,
+        "错因分析服务": 377.24,
+        "知识服务": 2060.48
+      }
+    },
+    {
+      "index": 46,
+      "request_id": "bench-00046",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 377.28,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 238.21
+      }
+    },
+    {
+      "index": 47,
+      "request_id": "bench-00047",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 822.43,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 309.48,
+        "错因分析服务": 453.42
+      }
+    },
+    {
+      "index": 48,
+      "request_id": "bench-00048",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 479.67,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 244.56
+      }
+    },
+    {
+      "index": 49,
+      "request_id": "bench-00049",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3035.08,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 258.31,
+        "错因分析服务": 569.07,
+        "知识服务": 2070.08
+      }
+    },
+    {
+      "index": 50,
+      "request_id": "bench-00050",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 499.18,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 222.45
+      }
+    },
+    {
+      "index": 51,
+      "request_id": "bench-00051",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1005.86,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 446.76,
+        "错因分析服务": 537.95
+      }
+    },
+    {
+      "index": 52,
+      "request_id": "bench-00052",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 569.83,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 244.13
+      }
+    },
+    {
+      "index": 53,
+      "request_id": "bench-00053",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3168.33,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 257.44,
+        "错因分析服务": 634.77,
+        "知识服务": 2087.55
+      }
+    },
+    {
+      "index": 54,
+      "request_id": "bench-00054",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 645.04,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 317.07
+      }
+    },
+    {
+      "index": 55,
+      "request_id": "bench-00055",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 799.18,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 267.1,
+        "错因分析服务": 356.98
+      }
+    },
+    {
+      "index": 56,
+      "request_id": "bench-00056",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 679.89,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 426.25
+      }
+    },
+    {
+      "index": 57,
+      "request_id": "bench-00057",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3100.32,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 375.58,
+        "错因分析服务": 548.5,
+        "知识服务": 2094.19
+      }
+    },
+    {
+      "index": 58,
+      "request_id": "bench-00058",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 471.44,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 222.87
+      }
+    },
+    {
+      "index": 59,
+      "request_id": "bench-00059",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1052.67,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 296.73,
+        "错因分析服务": 617.34
+      }
+    },
+    {
+      "index": 60,
+      "request_id": "bench-00060",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 379.5,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 265.72
+      }
+    },
+    {
+      "index": 61,
+      "request_id": "bench-00061",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3284.3,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 393.62,
+        "错因分析服务": 689.3,
+        "知识服务": 2078.73
+      }
+    },
+    {
+      "index": 62,
+      "request_id": "bench-00062",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 497.0,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 240.89
+      }
+    },
+    {
+      "index": 63,
+      "request_id": "bench-00063",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1017.7,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 297.62,
+        "错因分析服务": 506.58
+      }
+    },
+    {
+      "index": 64,
+      "request_id": "bench-00064",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 701.99,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 391.21
+      }
+    },
+    {
+      "index": 65,
+      "request_id": "bench-00065",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3194.17,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 498.63,
+        "错因分析服务": 414.34,
+        "知识服务": 2086.51
+      }
+    },
+    {
+      "index": 66,
+      "request_id": "bench-00066",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 619.53,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 322.72
+      }
+    },
+    {
+      "index": 67,
+      "request_id": "bench-00067",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 873.51,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 313.44,
+        "错因分析服务": 477.26
+      }
+    },
+    {
+      "index": 68,
+      "request_id": "bench-00068",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 1123.61,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 726.18
+      }
+    },
+    {
+      "index": 69,
+      "request_id": "bench-00069",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2961.66,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 300.84,
+        "错因分析服务": 486.56,
+        "知识服务": 2064.49
+      }
+    },
+    {
+      "index": 70,
+      "request_id": "bench-00070",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 763.32,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 442.99
+      }
+    },
+    {
+      "index": 71,
+      "request_id": "bench-00071",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 597.77,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 243.25,
+        "错因分析服务": 298.93
+      }
+    },
+    {
+      "index": 72,
+      "request_id": "bench-00072",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 381.4,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 272.87
+      }
+    },
+    {
+      "index": 73,
+      "request_id": "bench-00073",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2833.72,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 272.99,
+        "错因分析服务": 364.97,
+        "知识服务": 2064.89
+      }
+    },
+    {
+      "index": 74,
+      "request_id": "bench-00074",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 651.49,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 381.03
+      }
+    },
+    {
+      "index": 75,
+      "request_id": "bench-00075",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1044.76,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 383.1,
+        "错因分析服务": 436.77
+      }
+    },
+    {
+      "index": 76,
+      "request_id": "bench-00076",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 694.46,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 392.18
+      }
+    },
+    {
+      "index": 77,
+      "request_id": "bench-00077",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2759.28,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 254.68,
+        "错因分析服务": 260.76,
+        "知识服务": 2078.81
+      }
+    },
+    {
+      "index": 78,
+      "request_id": "bench-00078",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 536.63,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 231.83
+      }
+    },
+    {
+      "index": 79,
+      "request_id": "bench-00079",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 727.09,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 235.74,
+        "错因分析服务": 347.67
+      }
+    },
+    {
+      "index": 80,
+      "request_id": "bench-00080",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 343.05,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 284.23
+      }
+    },
+    {
+      "index": 81,
+      "request_id": "bench-00081",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2769.03,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 262.53,
+        "错因分析服务": 341.19,
+        "知识服务": 2041.59
+      }
+    },
+    {
+      "index": 82,
+      "request_id": "bench-00082",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 630.78,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 222.07
+      }
+    },
+    {
+      "index": 83,
+      "request_id": "bench-00083",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 807.6,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 265.53,
+        "错因分析服务": 290.9
+      }
+    },
+    {
+      "index": 84,
+      "request_id": "bench-00084",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 623.0,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 288.48
+      }
+    },
+    {
+      "index": 85,
+      "request_id": "bench-00085",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2856.01,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 240.07,
+        "错因分析服务": 285.78,
+        "知识服务": 2081.15
+      }
+    },
+    {
+      "index": 86,
+      "request_id": "bench-00086",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 411.11,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 271.0
+      }
+    },
+    {
+      "index": 87,
+      "request_id": "bench-00087",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 815.2,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 261.05,
+        "错因分析服务": 441.52
+      }
+    },
+    {
+      "index": 88,
+      "request_id": "bench-00088",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 502.38,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 324.13
+      }
+    },
+    {
+      "index": 89,
+      "request_id": "bench-00089",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2800.94,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 299.6,
+        "错因分析服务": 369.38,
+        "知识服务": 2080.98
+      }
+    },
+    {
+      "index": 90,
+      "request_id": "bench-00090",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 436.64,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 259.47
+      }
+    },
+    {
+      "index": 91,
+      "request_id": "bench-00091",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 648.72,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 233.5,
+        "错因分析服务": 302.23
+      }
+    },
+    {
+      "index": 92,
+      "request_id": "bench-00092",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 563.5,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 236.05
+      }
+    },
+    {
+      "index": 93,
+      "request_id": "bench-00093",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2936.74,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 233.14,
+        "错因分析服务": 357.71,
+        "知识服务": 2072.57
+      }
+    },
+    {
+      "index": 94,
+      "request_id": "bench-00094",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 562.97,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 203.82
+      }
+    },
+    {
+      "index": 95,
+      "request_id": "bench-00095",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 692.43,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 356.54,
+        "错因分析服务": 297.28
+      }
+    },
+    {
+      "index": 96,
+      "request_id": "bench-00096",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 465.96,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 243.5
+      }
+    },
+    {
+      "index": 97,
+      "request_id": "bench-00097",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2732.52,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 241.92,
+        "错因分析服务": 322.46,
+        "知识服务": 2059.58
+      }
+    },
+    {
+      "index": 98,
+      "request_id": "bench-00098",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 595.93,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 293.78
+      }
+    },
+    {
+      "index": 99,
+      "request_id": "bench-00099",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 761.4,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 230.74,
+        "错因分析服务": 350.72
+      }
+    },
+    {
+      "index": 100,
+      "request_id": "bench-00100",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 519.74,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 226.35
+      }
+    },
+    {
+      "index": 101,
+      "request_id": "bench-00101",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2779.14,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 358.15,
+        "错因分析服务": 275.42,
+        "知识服务": 2031.57
+      }
+    },
+    {
+      "index": 102,
+      "request_id": "bench-00102",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 473.76,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 222.04
+      }
+    },
+    {
+      "index": 103,
+      "request_id": "bench-00103",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 786.41,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 268.8,
+        "错因分析服务": 335.45
+      }
+    },
+    {
+      "index": 104,
+      "request_id": "bench-00104",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 487.49,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 261.59
+      }
+    },
+    {
+      "index": 105,
+      "request_id": "bench-00105",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2875.36,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 274.75,
+        "错因分析服务": 346.57,
+        "知识服务": 2081.52
+      }
+    },
+    {
+      "index": 106,
+      "request_id": "bench-00106",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 493.2,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 266.57
+      }
+    },
+    {
+      "index": 107,
+      "request_id": "bench-00107",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 829.07,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 332.05,
+        "错因分析服务": 383.56
+      }
+    },
+    {
+      "index": 108,
+      "request_id": "bench-00108",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 571.91,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 331.36
+      }
+    },
+    {
+      "index": 109,
+      "request_id": "bench-00109",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2777.27,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 287.66,
+        "错因分析服务": 338.86,
+        "知识服务": 2041.11
+      }
+    },
+    {
+      "index": 110,
+      "request_id": "bench-00110",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 538.95,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 251.06
+      }
+    },
+    {
+      "index": 111,
+      "request_id": "bench-00111",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 657.19,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 237.13,
+        "错因分析服务": 345.06
+      }
+    },
+    {
+      "index": 112,
+      "request_id": "bench-00112",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 435.09,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 221.99
+      }
+    },
+    {
+      "index": 113,
+      "request_id": "bench-00113",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2700.12,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 264.47,
+        "错因分析服务": 340.2,
+        "知识服务": 2037.43
+      }
+    },
+    {
+      "index": 114,
+      "request_id": "bench-00114",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 382.23,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 248.71
+      }
+    },
+    {
+      "index": 115,
+      "request_id": "bench-00115",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 691.22,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 239.02,
+        "错因分析服务": 323.88
+      }
+    },
+    {
+      "index": 116,
+      "request_id": "bench-00116",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 423.35,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 254.19
+      }
+    },
+    {
+      "index": 117,
+      "request_id": "bench-00117",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2825.53,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 277.75,
+        "错因分析服务": 398.61,
+        "知识服务": 2057.23
+      }
+    },
+    {
+      "index": 118,
+      "request_id": "bench-00118",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 374.34,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 236.21
+      }
+    },
+    {
+      "index": 119,
+      "request_id": "bench-00119",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 582.24,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 240.33,
+        "错因分析服务": 241.56
+      }
+    },
+    {
+      "index": 120,
+      "request_id": "bench-00120",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 442.24,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 231.45
+      }
+    },
+    {
+      "index": 121,
+      "request_id": "bench-00121",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2620.68,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 192.78,
+        "错因分析服务": 274.16,
+        "知识服务": 2048.52
+      }
+    },
+    {
+      "index": 122,
+      "request_id": "bench-00122",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 344.75,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 199.63
+      }
+    },
+    {
+      "index": 123,
+      "request_id": "bench-00123",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 769.11,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 239.83,
+        "错因分析服务": 432.73
+      }
+    },
+    {
+      "index": 124,
+      "request_id": "bench-00124",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 420.25,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 206.58
+      }
+    },
+    {
+      "index": 125,
+      "request_id": "bench-00125",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2861.4,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 244.35,
+        "错因分析服务": 439.26,
+        "知识服务": 2059.06
+      }
+    },
+    {
+      "index": 126,
+      "request_id": "bench-00126",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 413.19,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 238.33
+      }
+    },
+    {
+      "index": 127,
+      "request_id": "bench-00127",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 682.44,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 257.85,
+        "错因分析服务": 361.85
+      }
+    },
+    {
+      "index": 128,
+      "request_id": "bench-00128",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 544.22,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 249.9
+      }
+    },
+    {
+      "index": 129,
+      "request_id": "bench-00129",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3056.05,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 318.96,
+        "错因分析服务": 566.65,
+        "知识服务": 2088.43
+      }
+    },
+    {
+      "index": 130,
+      "request_id": "bench-00130",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 481.88,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 255.93
+      }
+    },
+    {
+      "index": 131,
+      "request_id": "bench-00131",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 769.2,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 365.66,
+        "错因分析服务": 313.8
+      }
+    },
+    {
+      "index": 132,
+      "request_id": "bench-00132",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 424.28,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 220.94
+      }
+    },
+    {
+      "index": 133,
+      "request_id": "bench-00133",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2931.69,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 255.15,
+        "错因分析服务": 564.12,
+        "知识服务": 2060.8
+      }
+    },
+    {
+      "index": 134,
+      "request_id": "bench-00134",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 508.63,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 376.2
+      }
+    },
+    {
+      "index": 135,
+      "request_id": "bench-00135",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 867.63,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 224.21,
+        "错因分析服务": 536.11
+      }
+    },
+    {
+      "index": 136,
+      "request_id": "bench-00136",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 473.86,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 325.74
+      }
+    },
+    {
+      "index": 137,
+      "request_id": "bench-00137",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2780.39,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 248.63,
+        "错因分析服务": 393.43,
+        "知识服务": 2074.15
+      }
+    },
+    {
+      "index": 138,
+      "request_id": "bench-00138",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 395.43,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 241.69
+      }
+    },
+    {
+      "index": 139,
+      "request_id": "bench-00139",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 689.33,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 218.06,
+        "错因分析服务": 372.17
+      }
+    },
+    {
+      "index": 140,
+      "request_id": "bench-00140",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 620.97,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 274.99
+      }
+    },
+    {
+      "index": 141,
+      "request_id": "bench-00141",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2776.59,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 281.98,
+        "错因分析服务": 324.68,
+        "知识服务": 2052.12
+      }
+    },
+    {
+      "index": 142,
+      "request_id": "bench-00142",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 596.72,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 346.39
+      }
+    },
+    {
+      "index": 143,
+      "request_id": "bench-00143",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 665.61,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 323.9,
+        "错因分析服务": 292.44
+      }
+    },
+    {
+      "index": 144,
+      "request_id": "bench-00144",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 489.42,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 233.89
+      }
+    },
+    {
+      "index": 145,
+      "request_id": "bench-00145",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2943.67,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 248.81,
+        "错因分析服务": 428.2,
+        "知识服务": 2082.52
+      }
+    },
+    {
+      "index": 146,
+      "request_id": "bench-00146",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 525.97,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 281.09
+      }
+    },
+    {
+      "index": 147,
+      "request_id": "bench-00147",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 808.17,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 502.92,
+        "错因分析服务": 275.87
+      }
+    },
+    {
+      "index": 148,
+      "request_id": "bench-00148",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 332.95,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 265.34
+      }
+    },
+    {
+      "index": 149,
+      "request_id": "bench-00149",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2913.44,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 319.9,
+        "错因分析服务": 417.15,
+        "知识服务": 2068.98
+      }
+    },
+    {
+      "index": 150,
+      "request_id": "bench-00150",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 353.51,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 248.84
+      }
+    },
+    {
+      "index": 151,
+      "request_id": "bench-00151",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 773.68,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 230.16,
+        "错因分析服务": 441.91
+      }
+    },
+    {
+      "index": 152,
+      "request_id": "bench-00152",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 538.14,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 267.11
+      }
+    },
+    {
+      "index": 153,
+      "request_id": "bench-00153",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3470.97,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 370.34,
+        "错因分析服务": 926.56,
+        "知识服务": 2092.44
+      }
+    },
+    {
+      "index": 154,
+      "request_id": "bench-00154",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 409.04,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 266.07
+      }
+    },
+    {
+      "index": 155,
+      "request_id": "bench-00155",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 849.42,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 364.39,
+        "错因分析服务": 402.06
+      }
+    },
+    {
+      "index": 156,
+      "request_id": "bench-00156",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 562.9,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 266.4
+      }
+    },
+    {
+      "index": 157,
+      "request_id": "bench-00157",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2992.24,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 236.67,
+        "错因分析服务": 421.42,
+        "知识服务": 2066.02
+      }
+    },
+    {
+      "index": 158,
+      "request_id": "bench-00158",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 563.47,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 315.29
+      }
+    },
+    {
+      "index": 159,
+      "request_id": "bench-00159",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1110.68,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 643.58,
+        "错因分析服务": 417.42
+      }
+    },
+    {
+      "index": 160,
+      "request_id": "bench-00160",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 400.08,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 265.73
+      }
+    },
+    {
+      "index": 161,
+      "request_id": "bench-00161",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2966.38,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 357.57,
+        "错因分析服务": 457.48,
+        "知识服务": 2103.46
+      }
+    },
+    {
+      "index": 162,
+      "request_id": "bench-00162",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 386.08,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 257.63
+      }
+    },
+    {
+      "index": 163,
+      "request_id": "bench-00163",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 769.73,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 287.27,
+        "错因分析服务": 397.38
+      }
+    },
+    {
+      "index": 164,
+      "request_id": "bench-00164",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 401.62,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 282.31
+      }
+    },
+    {
+      "index": 165,
+      "request_id": "bench-00165",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2887.31,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 351.25,
+        "错因分析服务": 395.53,
+        "知识服务": 2087.51
+      }
+    },
+    {
+      "index": 166,
+      "request_id": "bench-00166",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 475.01,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 272.31
+      }
+    },
+    {
+      "index": 167,
+      "request_id": "bench-00167",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 776.95,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 322.15,
+        "错因分析服务": 363.04
+      }
+    },
+    {
+      "index": 168,
+      "request_id": "bench-00168",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 549.14,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 377.52
+      }
+    },
+    {
+      "index": 169,
+      "request_id": "bench-00169",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2753.73,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 298.13,
+        "错因分析服务": 288.32,
+        "知识服务": 2086.12
+      }
+    },
+    {
+      "index": 170,
+      "request_id": "bench-00170",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 546.75,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 400.48
+      }
+    },
+    {
+      "index": 171,
+      "request_id": "bench-00171",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 842.8,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 381.09,
+        "错因分析服务": 351.62
+      }
+    },
+    {
+      "index": 172,
+      "request_id": "bench-00172",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 441.3,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 213.22
+      }
+    },
+    {
+      "index": 173,
+      "request_id": "bench-00173",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2915.99,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 336.91,
+        "错因分析服务": 344.16,
+        "知识服务": 2076.31
+      }
+    },
+    {
+      "index": 174,
+      "request_id": "bench-00174",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 471.34,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 264.44
+      }
+    },
+    {
+      "index": 175,
+      "request_id": "bench-00175",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 1560.27,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 1117.35,
+        "错因分析服务": 292.34
+      }
+    },
+    {
+      "index": 176,
+      "request_id": "bench-00176",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 362.31,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 217.73
+      }
+    },
+    {
+      "index": 177,
+      "request_id": "bench-00177",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2883.85,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 478.21,
+        "错因分析服务": 274.1,
+        "知识服务": 2067.88
+      }
+    },
+    {
+      "index": 178,
+      "request_id": "bench-00178",
+      "scenario": "correct",
+      "student_id": "S-0003",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 450.63,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 239.09
+      }
+    },
+    {
+      "index": 179,
+      "request_id": "bench-00179",
+      "scenario": "wrong",
+      "student_id": "S001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 678.28,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 237.51,
+        "错因分析服务": 408.99
+      }
+    },
+    {
+      "index": 180,
+      "request_id": "bench-00180",
+      "scenario": "correct",
+      "student_id": "S002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 427.97,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 270.47
+      }
+    },
+    {
+      "index": 181,
+      "request_id": "bench-00181",
+      "scenario": "wrong",
+      "student_id": "S003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 3019.69,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 290.13,
+        "错因分析服务": 557.6,
+        "知识服务": 2084.03
+      }
+    },
+    {
+      "index": 182,
+      "request_id": "bench-00182",
+      "scenario": "correct",
+      "student_id": "S004",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 496.35,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 302.08
+      }
+    },
+    {
+      "index": 183,
+      "request_id": "bench-00183",
+      "scenario": "wrong",
+      "student_id": "S005",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 734.01,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 222.55,
+        "错因分析服务": 402.31
+      }
+    },
+    {
+      "index": 184,
+      "request_id": "bench-00184",
+      "scenario": "correct",
+      "student_id": "S006",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 559.56,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 322.35
+      }
+    },
+    {
+      "index": 185,
+      "request_id": "bench-00185",
+      "scenario": "wrong",
+      "student_id": "S007",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2896.85,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 355.92,
+        "错因分析服务": 309.81,
+        "知识服务": 2072.94
+      }
+    },
+    {
+      "index": 186,
+      "request_id": "bench-00186",
+      "scenario": "correct",
+      "student_id": "S008",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 518.88,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 296.15
+      }
+    },
+    {
+      "index": 187,
+      "request_id": "bench-00187",
+      "scenario": "wrong",
+      "student_id": "S-0001",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 769.89,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 334.98,
+        "错因分析服务": 355.36
+      }
+    },
+    {
+      "index": 188,
+      "request_id": "bench-00188",
+      "scenario": "correct",
+      "student_id": "S-0002",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 417.51,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 277.85
+      }
+    },
+    {
+      "index": 189,
+      "request_id": "bench-00189",
+      "scenario": "wrong",
+      "student_id": "S-0003",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2815.55,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 248.43,
+        "错因分析服务": 401.91,
+        "知识服务": 2095.41
+      }
+    },
+    {
+      "index": 190,
+      "request_id": "bench-00190",
+      "scenario": "correct",
+      "student_id": "S001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 413.27,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 269.38
+      }
+    },
+    {
+      "index": 191,
+      "request_id": "bench-00191",
+      "scenario": "wrong",
+      "student_id": "S002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 709.14,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 263.27,
+        "错因分析服务": 292.4
+      }
+    },
+    {
+      "index": 192,
+      "request_id": "bench-00192",
+      "scenario": "correct",
+      "student_id": "S003",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 390.45,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 222.45
+      }
+    },
+    {
+      "index": 193,
+      "request_id": "bench-00193",
+      "scenario": "wrong",
+      "student_id": "S004",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2910.48,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 287.36,
+        "错因分析服务": 355.34,
+        "知识服务": 2070.82
+      }
+    },
+    {
+      "index": 194,
+      "request_id": "bench-00194",
+      "scenario": "correct",
+      "student_id": "S005",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 311.66,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 252.38
+      }
+    },
+    {
+      "index": 195,
+      "request_id": "bench-00195",
+      "scenario": "wrong",
+      "student_id": "S006",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 684.68,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 290.22,
+        "错因分析服务": 283.76
+      }
+    },
+    {
+      "index": 196,
+      "request_id": "bench-00196",
+      "scenario": "correct",
+      "student_id": "S007",
+      "question_id": "TQ05F089FAC4B2",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 403.8,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 292.43
+      }
+    },
+    {
+      "index": 197,
+      "request_id": "bench-00197",
+      "scenario": "wrong",
+      "student_id": "S008",
+      "question_id": "TQ0911EFCEE4F0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 2724.16,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "知识服务拒绝请求：Knowledge scope validation failed (out of syllabus)",
+      "stages": {
+        "判题服务": 196.66,
+        "错因分析服务": 293.46,
+        "知识服务": 2090.57
+      }
+    },
+    {
+      "index": 198,
+      "request_id": "bench-00198",
+      "scenario": "correct",
+      "student_id": "S-0001",
+      "question_id": "TQ4744478F4784",
+      "expected_judge_result": "correct",
+      "judge_result": "correct",
+      "scenario_matched": true,
+      "status_code": 200,
+      "outcome": "ok",
+      "ok": true,
+      "latency_ms": 424.38,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "",
+      "stages": {
+        "判题服务": 293.9
+      }
+    },
+    {
+      "index": 199,
+      "request_id": "bench-00199",
+      "scenario": "wrong",
+      "student_id": "S-0002",
+      "question_id": "TQE2CD6D9D0EA0",
+      "expected_judge_result": "wrong",
+      "judge_result": null,
+      "scenario_matched": false,
+      "status_code": 422,
+      "outcome": "http_4xx",
+      "ok": false,
+      "latency_ms": 698.19,
+      "timeout_s": 180.0,
+      "error": null,
+      "detail": "错因分析未能确定知识点，无法继续生成教学内容",
+      "stages": {
+        "判题服务": 305.02,
+        "错因分析服务": 297.6
+      }
+    }
+  ],
+  "json_path": "backend\\tools\\loadtest\\baselines\\baseline-fallback-pre.json"
+}
