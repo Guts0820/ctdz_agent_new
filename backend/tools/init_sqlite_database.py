@@ -1,6 +1,12 @@
-import sqlite3
-import os
 import csv
+import os
+import sqlite3
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 DATABASE = "database/sqlite/example_db.db"
 KNOWLEDGE_CSV = "database/seed/knowledge_points.csv"
@@ -19,8 +25,6 @@ CREATE TABLE IF NOT EXISTS students (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
-
 CREATE TABLE IF NOT EXISTS teacher_class (
     teacher_id VARCHAR(32) NOT NULL,
     class_id VARCHAR(32) NOT NULL,
@@ -28,6 +32,21 @@ CREATE TABLE IF NOT EXISTS teacher_class (
     grade VARCHAR(20),
     PRIMARY KEY (teacher_id, class_id)
 );
+
+CREATE TABLE IF NOT EXISTS account (
+    account_id TEXT PRIMARY KEY,
+    role TEXT NOT NULL CHECK (role IN ('student', 'teacher', 'admin')),
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,                       -- scrypt$salt$digest，明文一律不入库
+    student_id TEXT,                                   -- role=student 时必填
+    teacher_id TEXT,                                   -- role=teacher 时必填
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    password_changed_at TEXT,
+    FOREIGN KEY (student_id) REFERENCES students(student_id)
+);
+CREATE INDEX IF NOT EXISTS idx_account_student ON account(student_id);
+CREATE INDEX IF NOT EXISTS idx_account_teacher ON account(teacher_id);
 
 CREATE TABLE IF NOT EXISTS knowledge (
     knowledge_id VARCHAR(32) PRIMARY KEY,
@@ -477,6 +496,13 @@ def init_database():
             except sqlite3.OperationalError:
                 pass
 
+    # 迁移：老库的 students 表没有 class_id（授权依据），必须先补列再建索引
+    try:
+        cursor.execute("ALTER TABLE students ADD COLUMN class_id VARCHAR(32)")
+    except sqlite3.OperationalError:
+        pass  # 列已存在
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id)")
+
     column_mappings = {
         'knowledge': '(knowledge_id, knowledge_scope, knowledge_name, grade, textbook_version, unit, prerequisite, next_knowledge, difficulty, is_core)',
         'error_bank': '(error_id, level1, level2, level3, error_description, error_suggestion)',
@@ -510,7 +536,7 @@ def init_database():
     ensure_ability_mapping_schema(DATABASE)
     
     print(f"Database initialized successfully at {DATABASE}")
-    print("Tables created: students, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit, homework_batch, homework_batch_question, question_release_override, teacher_question_import, teacher_question_import_item")
+    print("Tables created: students, account, knowledge, error_bank, question, question_knowledge_mapping, answer_history, mistake_case, mistake_case_error, mistake_case_knowledge, teaching_content, knowledge_mastery, review_plan, push_record, frequency_limit, homework_batch, homework_batch_question, question_release_override, teacher_question_import, teacher_question_import_item")
     print("Initial data loaded for: knowledge(255+), error_bank(17), students(3), question(5), question_knowledge_mapping(5)")
 
 if __name__ == "__main__":

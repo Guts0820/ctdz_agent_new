@@ -47,10 +47,62 @@ def test_init_schema_exposes_students_class_id_column() -> None:
         connection.executescript(init_sqlite_database.SCHEMA)
 
         columns = {row[1] for row in connection.execute("PRAGMA table_info(students)")}
+
+    assert "class_id" in columns
+
+
+def test_init_database_creates_the_class_id_index_and_is_repeatable(tmp_path, monkeypatch) -> None:
+    """索引不能写在 SCHEMA 里：老库的 students 表没有 class_id 时 executescript 会整段失败。"""
+    database = tmp_path / "init.db"
+    monkeypatch.setattr(init_sqlite_database, "DATABASE", str(database))
+    monkeypatch.setattr(init_sqlite_database, "KNOWLEDGE_CSV", str(tmp_path / "missing.csv"))
+
+    init_sqlite_database.init_database()
+    init_sqlite_database.init_database()  # 重复执行必须安全（start_all 每次都会跑）
+
+    with sqlite3.connect(database) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(students)")}
         indexes = {row[1] for row in connection.execute("PRAGMA index_list(students)")}
 
     assert "class_id" in columns
     assert "idx_students_class" in indexes
+
+
+def test_init_database_migrates_a_students_table_without_class_id(tmp_path, monkeypatch) -> None:
+    """老库（含仓库里被跟踪的 example_db.db）没有 class_id 列，init 必须先补列。"""
+    database = tmp_path / "legacy.db"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """CREATE TABLE students (
+                   student_id VARCHAR(32) PRIMARY KEY,
+                   student_birthdate DATE,
+                   student_name VARCHAR(50),
+                   student_gender VARCHAR(10),
+                   student_school VARCHAR(100),
+                   student_class VARCHAR(50),
+                   student_grade VARCHAR(20),
+                   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+               );
+               INSERT INTO students (student_id, student_class, student_grade)
+                   VALUES ('S-0001', '三年级(1)班', '三年级');"""
+        )
+    monkeypatch.setattr(init_sqlite_database, "DATABASE", str(database))
+    monkeypatch.setattr(init_sqlite_database, "KNOWLEDGE_CSV", str(tmp_path / "missing.csv"))
+
+    init_sqlite_database.init_database()
+
+    with sqlite3.connect(database) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(students)")}
+        indexes = {row[1] for row in connection.execute("PRAGMA index_list(students)")}
+        student = connection.execute(
+            "SELECT student_id, student_class, class_id FROM students WHERE student_id = 'S-0001'"
+        ).fetchall()
+
+    assert "class_id" in columns
+    assert "idx_students_class" in indexes
+    # 存量行不被破坏（种子数据会补插其它学生，这里只断言原有那条）
+    assert student == [("S-0001", "三年级(1)班", None)]
 
 
 def test_parse_class_label_handles_every_observed_writing_style() -> None:
