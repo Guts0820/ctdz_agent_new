@@ -19,12 +19,18 @@ def project_path(path: str | Path) -> Path:
     return candidate if candidate.is_absolute() else PROJECT_ROOT / candidate
 
 
-def build_service_environment(port):
+def project_environment() -> dict[str, str]:
+    """Environment with the project root on PYTHONPATH so ``backend.*`` imports work."""
     env = os.environ.copy()
     existing_pythonpath = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = os.pathsep.join(
         item for item in (str(PROJECT_ROOT), existing_pythonpath) if item
     )
+    return env
+
+
+def build_service_environment(port):
+    env = project_environment()
     env["API_PORT"] = str(port)
     return env
 
@@ -92,6 +98,20 @@ def start_neo4j() -> subprocess.Popen | None:
     return process
 
 
+def initialize_database() -> None:
+    """Run the schema/seed script with the project root importable.
+
+    ``python backend/start_all.py`` puts ``backend/`` on sys.path, so the init script
+    needs PYTHONPATH set explicitly or its own ``backend.*`` imports fail.
+    """
+    subprocess.run(
+        [sys.executable, str(project_path("backend/tools/init_sqlite_database.py"))],
+        cwd=str(PROJECT_ROOT),
+        check=True,
+        env=project_environment(),
+    )
+
+
 def start_service(name, script_path, port, log_dir="backend/logs"):
     print(f"Starting {name} on port {port}...")
     log_directory = project_path(log_dir)
@@ -141,11 +161,7 @@ def main():
         if neo4j_process is not None:
             processes.append(("Neo4j", neo4j_process))
         print("Initializing database...")
-        subprocess.run(
-            [sys.executable, str(project_path("backend/tools/init_sqlite_database.py"))],
-            cwd=str(PROJECT_ROOT),
-            check=True,
-        )
+        initialize_database()
         
         for name, script, port in services:
             process = start_service(name, script, port)
