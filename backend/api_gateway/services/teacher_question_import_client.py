@@ -4,6 +4,7 @@ import requests
 from fastapi import HTTPException
 
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def _response_payload(response: requests.Response) -> dict[str, Any]:
@@ -39,7 +40,8 @@ def preview_teacher_question_import(
             f"{SERVICE_URLS['teacher']}/internal/api/v1/teacher/question-imports/preview",
             files={"image": (filename, image_bytes, content_type)},
             data=data,
-            timeout=660,
+            headers=internal_headers(),
+        timeout=660,
         )
     except requests.RequestException as error:
         raise HTTPException(status_code=502, detail=f"教师端服务不可用：{error}") from error
@@ -51,7 +53,8 @@ def confirm_teacher_question_import(import_id: str, payload: dict[str, Any]) -> 
         response = requests.post(
             f"{SERVICE_URLS['teacher']}/internal/api/v1/teacher/question-imports/{import_id}/confirm",
             json=payload,
-            timeout=60,
+            headers=internal_headers(),
+        timeout=60,
         )
     except requests.RequestException as error:
         raise HTTPException(status_code=502, detail=f"教师端服务不可用：{error}") from error

@@ -2,10 +2,11 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from backend.services.review_service.datahub.core.ability_mapping import ensure_ability_mapping_schema
 from backend.shared.config import SERVICE_BIND_HOST
+from backend.shared.internal_auth import require_internal_token
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -13,7 +14,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Review Service", version="2.0.0", lifespan=lifespan)
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="Review Service", version="2.0.0", lifespan=lifespan)
 
 try:
     from backend.services.review_service.review.api import review_sessions, review_plans, corrections, priority

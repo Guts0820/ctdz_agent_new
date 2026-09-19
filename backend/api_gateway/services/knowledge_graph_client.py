@@ -6,11 +6,12 @@ import requests
 from fastapi import HTTPException
 
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def fetch_question(question_id: str) -> dict[str, Any]:
     response = requests.get(
-        f"{SERVICE_URLS['knowledge_graph']}/api/questions/{question_id}", timeout=10
+        f"{SERVICE_URLS['knowledge_graph']}/api/questions/{question_id}", timeout=10, headers=internal_headers()
     )
     if response.status_code == 404:
         raise HTTPException(status_code=422, detail="知识图谱中不存在该题目的标准答案")
@@ -22,6 +23,7 @@ def resolve_question(question_text: str) -> dict[str, Any]:
     response = requests.get(
         f"{SERVICE_URLS['knowledge_graph']}/api/questions/resolve",
         params={"text": question_text},
+        headers=internal_headers(),
         timeout=10,
     )
     if response.status_code == 404:

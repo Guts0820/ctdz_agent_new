@@ -4,6 +4,7 @@ import requests
 from fastapi import HTTPException
 
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def upload_standard_answer_image(image_bytes: bytes, filename: str, content_type: str) -> dict[str, Any]:
@@ -11,7 +12,8 @@ def upload_standard_answer_image(image_bytes: bytes, filename: str, content_type
         response = requests.post(
             f"{SERVICE_URLS['teacher']}/internal/api/v1/teacher/standard_answers",
             files={"image": (filename, image_bytes, content_type)},
-            timeout=660,
+            headers=internal_headers(),
+        timeout=660,
         )
     except requests.RequestException as error:
         raise HTTPException(status_code=502, detail=f"教师端服务不可用：{error}") from error

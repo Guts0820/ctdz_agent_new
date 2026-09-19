@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime
 from typing import List, Optional, Tuple, Dict
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import sqlite3
 import requests
@@ -10,11 +10,12 @@ from backend.shared.id_utils import generate_id
 from backend.shared.llm_client import call_llm
 
 from backend.shared.config import SERVICE_BIND_HOST
+from backend.shared.internal_auth import require_internal_token
 KG_SERVICE_URL = "http://127.0.0.1:8007"
 
 _knowledge_cache = None
 
-app = FastAPI(title="Error Analysis Agent", version="1.0.0")
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="Error Analysis Agent", version="1.0.0")
 
 DATABASE = "database/sqlite/example_db.db"
 

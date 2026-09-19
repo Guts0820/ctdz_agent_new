@@ -1,8 +1,9 @@
 import requests
 from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from backend.shared.config import SERVICE_BIND_HOST
+from backend.shared.internal_auth import require_internal_token
 
 def convert_difficulty(value) -> str:
     if isinstance(value, str):
@@ -10,7 +11,7 @@ def convert_difficulty(value) -> str:
     difficulty_map = {1: "easy", 2: "medium", 3: "hard"}
     return difficulty_map.get(value, "medium")
 
-app = FastAPI(title="Knowledge Service", version="1.0.0")
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="Knowledge Service", version="1.0.0")
 
 KG_SERVICE_URL = "http://localhost:8007"
 

@@ -2,10 +2,11 @@ import requests
 
 from backend.api_gateway.services.gateway_database import get_gateway_db
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def get_mastery(student_id: str) -> dict:
-    response = requests.get(f"{SERVICE_URLS['state']}/internal/api/v1/state/mastery/{student_id}", timeout=10)
+    response = requests.get(f"{SERVICE_URLS['state']}/internal/api/v1/state/mastery/{student_id}", timeout=10, headers=internal_headers())
     response.raise_for_status()
     return response.json()
 

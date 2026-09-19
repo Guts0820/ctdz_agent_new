@@ -6,12 +6,14 @@ import requests
 from fastapi import HTTPException
 
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def analyze_submission(payload: dict[str, Any]) -> dict[str, Any]:
     response = requests.post(
         f"{SERVICE_URLS['analysis']}/internal/api/v1/analysis/process",
         json=payload,
+        headers=internal_headers(),
         timeout=30,
     )
     if response.status_code >= 400:

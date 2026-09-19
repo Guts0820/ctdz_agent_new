@@ -15,7 +15,7 @@ from typing import List, Optional
 
 import requests
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
 
@@ -35,9 +35,10 @@ from backend.services.analysis_service.llm_judge import (
 from backend.services.analysis_service.question_retrieval import resolve_question_reference
 from backend.shared.config import KNOWLEDGE_GRAPH_URL, HTTP_TIMEOUT_SECONDS
 from backend.shared.config import SERVICE_BIND_HOST
+from backend.shared.internal_auth import require_internal_token
 
 
-app = FastAPI(title="Judging Service", version="1.0.0")
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="Judging Service", version="1.0.0")
 DATABASE = DATABASE_PATH
 
 

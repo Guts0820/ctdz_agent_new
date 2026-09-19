@@ -4,11 +4,12 @@ from fastapi import HTTPException
 from backend.api_gateway.models import ExternalErrorAnalyzeRequest
 from backend.api_gateway.services.gateway_database import get_gateway_db
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def _fetch_question(question_id: str) -> dict:
     try:
-        response = requests.get(f"{SERVICE_URLS['knowledge_graph']}/api/questions/{question_id}", timeout=10)
+        response = requests.get(f"{SERVICE_URLS['knowledge_graph']}/api/questions/{question_id}", timeout=10, headers=internal_headers())
         response.raise_for_status()
         return response.json()
     except requests.RequestException:
@@ -32,7 +33,7 @@ def analyze_external_error(request: ExternalErrorAnalyzeRequest) -> dict:
         return {"error": "question_not_found", "message": str(error.detail), "question_id": request.question_id}
     payload = {"student_id": f"U-{request.student_id}", "original_question": question.get("text", ""), "standard_solve_steps": question.get("answer_steps", ""), "correct_answer": request.correct_answer, "student_write": request.student_answer, "knowledge_id": question.get("knowledge_id", "")}
     try:
-        response = requests.post(f"{SERVICE_URLS['error_analysis']}/internal/api/v1/error-analysis/analyze-light", json=payload, timeout=30)
+        response = requests.post(f"{SERVICE_URLS['error_analysis']}/internal/api/v1/error-analysis/analyze-light", json=payload, timeout=30, headers=internal_headers())
         response.raise_for_status()
         analysis = response.json()
     except requests.RequestException as error:

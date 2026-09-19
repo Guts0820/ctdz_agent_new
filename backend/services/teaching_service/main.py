@@ -5,15 +5,16 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import requests
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field, field_validator
 
 from backend.shared.id_utils import generate_id
 from backend.shared.llm_client import call_llm
 from backend.shared.config import SERVICE_BIND_HOST
+from backend.shared.internal_auth import require_internal_token
 
 
-app = FastAPI(title="Teaching Service", version="1.1.0")
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="Teaching Service", version="1.1.0")
 KG_SERVICE_URL = "http://127.0.0.1:8007"
 DATABASE = "database/sqlite/example_db.db"
 

@@ -1,12 +1,13 @@
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 import sqlite3
 import requests
 from backend.shared.config import REVIEW_SERVICE_URL
 
 from backend.shared.config import SERVICE_BIND_HOST
-app = FastAPI(title="State Service", version="1.0.0")
+from backend.shared.internal_auth import require_internal_token
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="State Service", version="1.0.0")
 
 DATABASE = "database/sqlite/example_db.db"
 

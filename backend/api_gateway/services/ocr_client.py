@@ -8,6 +8,7 @@ import requests
 from fastapi import HTTPException
 
 from backend.shared.config import OCR_SERVICE_URL, OCR_TIMEOUT_SECONDS
+from backend.shared.internal_auth import internal_headers
 
 
 def _decode_submission_image(image: str) -> tuple[bytes, str]:
@@ -29,6 +30,7 @@ def recognize_submission_image(image: str) -> dict[str, Any]:
     response = requests.post(
         f"{OCR_SERVICE_URL.rstrip('/')}/v1/recognize",
         files={"image": ("image", io.BytesIO(image_bytes), content_type)},
+        headers=internal_headers(),
         timeout=OCR_TIMEOUT_SECONDS,
     )
     response.raise_for_status()

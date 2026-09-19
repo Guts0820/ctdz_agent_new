@@ -6,12 +6,14 @@ from typing import Any
 import requests
 
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def generate_teaching(payload: dict[str, Any]) -> dict[str, Any]:
     response = requests.post(
         f"{SERVICE_URLS['teaching']}/internal/api/v1/teaching/generate",
         json=payload,
+        headers=internal_headers(),
         timeout=30,
     )
     response.raise_for_status()
@@ -22,6 +24,7 @@ def check_frequency(student_id: str, knowledge_id: str) -> dict[str, Any]:
     response = requests.post(
         f"{SERVICE_URLS['teaching']}/internal/api/v1/teaching/frequency-check",
         json={"student_id": student_id, "knowledge_id": knowledge_id, "current_time": datetime.now().isoformat()},
+        headers=internal_headers(),
         timeout=30,
     )
     response.raise_for_status()

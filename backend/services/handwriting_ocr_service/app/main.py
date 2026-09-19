@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from functools import lru_cache
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from dotenv import load_dotenv
 from starlette.concurrency import run_in_threadpool
 
@@ -14,6 +14,9 @@ from app.services.qwen_vision import QwenVisionEngine
 from app.services.recognition_service import RecognitionService
 
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(SERVICE_ROOT)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 
 def load_service_environment() -> None:
@@ -54,8 +57,9 @@ def _recognize_image(image_bytes: bytes, content_type: str, mode: str = "student
 
 
 from fastapi.middleware.cors import CORSMiddleware
+from backend.shared.internal_auth import require_internal_token
 
-app = FastAPI(title="Handwriting OCR Service", version="0.1.0")
+app = FastAPI(dependencies=[Depends(require_internal_token)], title="Handwriting OCR Service", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 

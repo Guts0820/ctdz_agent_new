@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
@@ -11,10 +11,12 @@ from backend.services.knowledge_graph_service.routers.internal_questions import 
 from backend.services.knowledge_graph_service.routers.admin_questions import router as admin_questions_router
 from backend.services.knowledge_graph_service.vector_index import ensure_vector_index
 from backend.shared.config import SERVICE_BIND_HOST
+from backend.shared.internal_auth import require_internal_token
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = FastAPI(
+    dependencies=[Depends(require_internal_token)],
     title="小学生数学知识图谱 API",
     description="提供知识点查询、题目推荐、错因分析等功能",
     version="1.0.0",

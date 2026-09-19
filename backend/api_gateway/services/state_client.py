@@ -5,6 +5,7 @@ from typing import Any
 import requests
 
 from backend.api_gateway.services.service_urls import SERVICE_URLS
+from backend.shared.internal_auth import internal_headers
 
 
 def update_state(student_id: str, knowledge_id: str, is_correct: bool, confidence: float,
@@ -13,6 +14,7 @@ def update_state(student_id: str, knowledge_id: str, is_correct: bool, confidenc
         f"{SERVICE_URLS['state']}/internal/api/v1/state/update",
         json={"student_id": student_id, "knowledge_id": knowledge_id, "is_correct": is_correct,
               "confidence": confidence, "answer_history_id": answer_history_id, "mistake_case_id": mistake_case_id},
+        headers=internal_headers(),
         timeout=30,
     )
     response.raise_for_status()
@@ -23,6 +25,7 @@ def generate_review(student_id: str, knowledge_id: str, mastery_id: str, master_
     response = requests.post(
         f"{SERVICE_URLS['state']}/internal/api/v1/state/generate-review",
         json={"student_id": student_id, "knowledge_id": knowledge_id, "knowledge_mastery_id": mastery_id, "master_level": master_level},
+        headers=internal_headers(),
         timeout=30,
     )
     response.raise_for_status()

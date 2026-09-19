@@ -74,6 +74,8 @@ KNOWLEDGE_CSV_PATH = get_env("KNOWLEDGE_CSV_PATH", "database/seed/knowledge_poin
 API_GATEWAY_HOST = get_env("API_GATEWAY_HOST", "0.0.0.0")
 # 内部服务默认只监听回环地址，堵住绕过网关直连的通道；需要外部访问时用环境变量放开
 SERVICE_BIND_HOST = get_env("SERVICE_BIND_HOST", "127.0.0.1")
+# 网关到内部服务的共享令牌；留空表示本地开发不校验
+INTERNAL_API_TOKEN = get_env("INTERNAL_API_TOKEN", "")
 API_GATEWAY_PORT = get_int("API_GATEWAY_PORT", 8000)
 ANALYSIS_SERVICE_URL = get_env("ANALYSIS_SERVICE_URL", "http://127.0.0.1:8081")
 ERROR_ANALYSIS_SERVICE_URL = get_env("ERROR_ANALYSIS_SERVICE_URL", "http://127.0.0.1:8082")
