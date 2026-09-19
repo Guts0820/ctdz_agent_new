@@ -8,4 +8,6 @@ __pycache__/
 **/.pytest_tmp*/
 backend/logs/*.log*
 backend/logs/*.err
+backend/logs/*.json
 backend/user_data.db
+.hermes/
