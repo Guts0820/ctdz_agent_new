@@ -13,10 +13,13 @@ CREATE TABLE IF NOT EXISTS students (
     student_gender VARCHAR(10),
     student_school VARCHAR(100),
     student_class VARCHAR(50),
+    class_id VARCHAR(32),                          -- 归属班级，对应 teacher_class.class_id（授权依据）
     student_grade VARCHAR(20),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
 
 CREATE TABLE IF NOT EXISTS teacher_class (
     teacher_id VARCHAR(32) NOT NULL,
